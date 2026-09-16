@@ -1,7 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class taskReadHandler : MonoBehaviour
 {
@@ -12,16 +9,21 @@ public class taskReadHandler : MonoBehaviour
     public GameObject itemDelivered;
     public CountdownTimer timer;
     public GameObject timerDisplay;
-    // Start is called before the first frame update
+
     public void taskRead()
     {
-        taskCanvas.SetActive(false);
-        pauseBtn.SetActive(true);
-        joystick.SetActive(true);
+        Time.timeScale = 1f;
 
-        healthBar.gameObject.SetActive(true);
-        itemDelivered.SetActive(true);
-        timerDisplay.SetActive(true);
-        timer.counting = true;
+        if (taskCanvas != null) taskCanvas.SetActive(false);
+        if (pauseBtn != null) pauseBtn.SetActive(true);
+        if (joystick != null) joystick.SetActive(true);
+        if (healthBar != null) healthBar.gameObject.SetActive(true);
+        if (itemDelivered != null) itemDelivered.SetActive(true);
+        if (timerDisplay != null) timerDisplay.SetActive(true);
+
+        if (timer != null)
+        {
+            timer.counting = true;
+        }
     }
 }
