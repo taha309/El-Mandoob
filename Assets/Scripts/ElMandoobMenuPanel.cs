@@ -49,6 +49,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
     private void Build()
     {
+        Time.timeScale = 1f;
         data = SaveSystem.Load();
 
         Canvas canvas = gameObject.AddComponent<Canvas>();
@@ -66,13 +67,13 @@ public class ElMandoobMenuPanel : MonoBehaviour
             transform,
             "ProfileGarage",
             new Vector2(0.015f, 0.035f),
-            new Vector2(0.37f, 0.42f),
-            new Color(0.035f, 0.035f, 0.045f, 0.88f));
+            new Vector2(0.39f, 0.45f),
+            new Color(0.035f, 0.035f, 0.045f, 0.90f));
 
         TextMeshProUGUI title = CreateText(
             panel.transform,
             "GarageTitle",
-            new Vector2(0.05f, 0.82f),
+            new Vector2(0.05f, 0.83f),
             new Vector2(0.95f, 0.96f),
             30f,
             TextAlignmentOptions.Right);
@@ -81,32 +82,32 @@ public class ElMandoobMenuPanel : MonoBehaviour
         profileText = CreateText(
             panel.transform,
             "Profile",
-            new Vector2(0.05f, 0.64f),
-            new Vector2(0.95f, 0.82f),
+            new Vector2(0.05f, 0.66f),
+            new Vector2(0.95f, 0.83f),
             22f,
             TextAlignmentOptions.Right);
 
         storyText = CreateText(
             panel.transform,
             "Story",
-            new Vector2(0.05f, 0.50f),
-            new Vector2(0.95f, 0.64f),
-            21f,
+            new Vector2(0.05f, 0.47f),
+            new Vector2(0.95f, 0.66f),
+            20f,
             TextAlignmentOptions.Right);
 
         speedButton = CreateButton(
             panel.transform,
             "SpeedUpgrade",
-            new Vector2(0.05f, 0.30f),
-            new Vector2(0.95f, 0.48f),
+            new Vector2(0.05f, 0.28f),
+            new Vector2(0.95f, 0.45f),
             out speedButtonText);
         speedButton.onClick.AddListener(BuySpeedUpgrade);
 
         enduranceButton = CreateButton(
             panel.transform,
             "EnduranceUpgrade",
-            new Vector2(0.05f, 0.11f),
-            new Vector2(0.95f, 0.29f),
+            new Vector2(0.05f, 0.10f),
+            new Vector2(0.95f, 0.27f),
             out enduranceButtonText);
         enduranceButton.onClick.AddListener(BuyEnduranceUpgrade);
 
@@ -114,7 +115,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
             panel.transform,
             "GarageMessage",
             new Vector2(0.05f, 0.01f),
-            new Vector2(0.95f, 0.11f),
+            new Vector2(0.95f, 0.10f),
             18f,
             TextAlignmentOptions.Center);
 
@@ -137,10 +138,10 @@ public class ElMandoobMenuPanel : MonoBehaviour
         }
 
         data.money -= cost;
-        data.speed += 1;
+        data.speed++;
         SaveSystem.Save(data);
-        ShowMessage("تمام. المندوب بقى أسرع في الشارع.");
         Refresh();
+        ShowMessage("تمام. المندوب بقى أسرع في الشارع.");
     }
 
     private void BuyEnduranceUpgrade()
@@ -159,10 +160,10 @@ public class ElMandoobMenuPanel : MonoBehaviour
         }
 
         data.money -= cost;
-        data.healths += 1;
+        data.healths++;
         SaveSystem.Save(data);
-        ShowMessage("جهزت نفسك للشيفتات الأصعب.");
         Refresh();
+        ShowMessage("جهزت نفسك للشيفتات الأصعب.");
     }
 
     private void Refresh()
@@ -172,12 +173,12 @@ public class ElMandoobMenuPanel : MonoBehaviour
         ElMandoobBootstrap.ApplyArabicText(
             profileText,
             "الرصيد: " + data.money + " جنيه | السمعة: " + data.reputation +
-            " | الشيفتات: " + data.completedShifts);
+            " | مفتوح لحد شيفت " + data.levelUnlocked);
 
         ElMandoobBootstrap.ApplyArabicText(
             storyText,
             "الحكاية: " + ElMandoobContent.GetStoryChapterName(data.storyStage) +
-            " | التوصيلات: " + data.completedDeliveries);
+            "\n" + ElMandoobContent.GetNextStoryHint(data));
 
         int speedCost = GetSpeedCost();
         string speedLabel = data.speed >= 8
@@ -191,8 +192,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
             : "طوّر التحمل لـ " + (data.healths + 1) + " - " + enduranceCost + " جنيه";
         ElMandoobBootstrap.ApplyArabicText(enduranceButtonText, enduranceLabel);
 
-        // Keep buttons clickable while an upgrade is still available so a player
-        // without enough money gets a useful "you need X more" message.
+        // Keep unaffordable upgrades clickable so the player receives useful feedback.
         speedButton.interactable = data.speed < 8;
         enduranceButton.interactable = data.healths < 3;
 
@@ -292,7 +292,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
         image.color = new Color(0.16f, 0.33f, 0.25f, 0.96f);
 
         Button button = buttonObject.GetComponent<Button>();
-        button.targetGraphic = image;
         ColorBlock colors = button.colors;
         colors.highlightedColor = new Color(0.21f, 0.43f, 0.32f, 1f);
         colors.pressedColor = new Color(0.11f, 0.24f, 0.18f, 1f);
