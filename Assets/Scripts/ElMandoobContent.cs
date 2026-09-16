@@ -56,7 +56,7 @@ public static class ElMandoobContent
         "محمود",
         "أم آسر",
         "حازم",
-        "ندى"
+        "عمر"
     };
 
     private static readonly string[] Areas =
@@ -116,7 +116,7 @@ public static class ElMandoobContent
 
     public static ElMandoobOrder CreateOrder(GameData data, int level)
     {
-        ElMandoobOrder story = TryCreateStoryOrder(data);
+        ElMandoobOrder story = TryCreateStoryOrder(data, level);
         if (story != null)
         {
             return story;
@@ -165,15 +165,22 @@ public static class ElMandoobContent
         return Businesses[index];
     }
 
-    private static ElMandoobOrder TryCreateStoryOrder(GameData data)
+    private static ElMandoobOrder TryCreateStoryOrder(GameData data, int level)
     {
+        if (data == null)
+        {
+            return null;
+        }
+
+        string shiftArea = GetShiftArea(level);
+
         // Story jobs unlock gradually so normal deliveries and recurring customers
         // have time to establish the neighborhood first.
         if (data.storyStage == 0 && data.completedDeliveries >= 2)
         {
             return Story(
                 "story_hassan_medicine", 0,
-                "صيدلية النور", "عم حسن", "الدقي", "عمارة ١٢، الدور التالت",
+                "صيدلية النور", "عم حسن", shiftArea, "عمارة ١٢، الدور التالت",
                 "دواء ضغط وسكر",
                 "الطلب ده لعم حسن. راجل كبير وبيطلب مننا كل أسبوع.",
                 "يا ابني لو طلعتلي فوق تبقى جدع، رجلي واجعاني النهارده.",
@@ -185,7 +192,7 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_sealed_envelope", 1,
-                "مطبعة النيل", "شريف", "المهندسين", "العمارة اللي قصاد الصيدلية",
+                "مطبعة النيل", "شريف", shiftArea, "العمارة اللي قصاد الصيدلية",
                 "ظرف مقفول - مستندات",
                 "في ظرف باسم شريف. قال بالحرف: يتسلّم زي ما هو.",
                 "أنا مش اللي هستلم. طلّعه لندى في العنوان المكتوب ومتكلمهاش غير لما توصل.",
@@ -197,7 +204,7 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_wrong_order", 2,
-                "بقالة عم سيد", "ندى", "العجوزة", "الدور التاني، الشقة اللي على الشمال",
+                "بقالة عم سيد", "ندى", shiftArea, "الدور التاني، الشقة اللي على الشمال",
                 "كيس صغير + ظرف",
                 "ندى طلبت حاجات بسيطة، بس في ظرف اتحط مع الطلب باسمها.",
                 "أنا مطلبتش أي ظرف. استنى... الاسم اللي عليه اسمي فعلًا. سيبهولي.",
@@ -209,7 +216,7 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_changed_address", 3,
-                "مطبعة النيل", "شريف", "بين السرايات", "آخر الشارع، باب حديد أزرق",
+                "مطبعة النيل", "شريف", shiftArea, "آخر الشارع، باب حديد أزرق",
                 "طرد مستندات",
                 "شريف سايب طرد وقال إن العنوان مهم جدًا.",
                 "متروحش العنوان القديم. العنوان اتغير. آخر الشارع عند الباب الأزرق.",
@@ -221,7 +228,7 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_hamdy_warning", 4,
-                "كشري أبو حمدي", "عم حمدي", "المنيل", "جنب القهوة، العمارة القديمة",
+                "كشري أبو حمدي", "عم حمدي", shiftArea, "جنب القهوة، العمارة القديمة",
                 "طلب كشري + رسالة",
                 "عم حمدي وقفك قبل ما تمشي وقالك إنه عايز يكلمك بعيد عن الزباين.",
                 "بص يا ابني... الراجل اللي اسمه شريف ده بيسأل عن المندوبين أكتر ما بيسأل عن طلباته. خلي عينك مفتوحة.",
@@ -233,7 +240,7 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_final_envelope", 5,
-                "مطبعة النيل", "ندى", "الدقي", "أول شارع على اليمين بعد الكشك",
+                "مطبعة النيل", "ندى", shiftArea, "أول شارع على اليمين بعد الكشك",
                 "آخر ظرف",
                 "لقيت ظرف متساب باسمك أنت. جواه ورقة مكتوب عليها: وصّله لندى وبس.",
                 "الورق ده يثبت إن في حد بيعمل طلبات وهمية ويرجع فلوسها على حسابات مختلفة. شريف كان بيستخدم المندوبين عشان محدش يربط العناوين ببعض.",
@@ -246,7 +253,7 @@ public static class ElMandoobContent
 
     public static void ApplyCompletedOrder(GameData data, ElMandoobOrder order)
     {
-        if (order == null)
+        if (data == null || order == null)
         {
             return;
         }
@@ -262,8 +269,44 @@ public static class ElMandoobContent
         if (storyStage <= 0) return "أول شيفت";
         if (storyStage == 1) return "الناس بقت تعرفك";
         if (storyStage <= 4) return "الطلب الغريب";
-        if (storyStage <= 5) return "العناوين مش راكبة";
-        return "آخر توصيل";
+        if (storyStage == 5) return "العناوين مش راكبة";
+        return "حكاية الحي خلصت";
+    }
+
+    public static string GetNextStoryHint(GameData data)
+    {
+        if (data == null)
+        {
+            return string.Empty;
+        }
+
+        int target;
+        switch (data.storyStage)
+        {
+            case 0: target = 2; break;
+            case 1: target = 5; break;
+            case 2: target = 8; break;
+            case 3: target = 11; break;
+            case 4: target = 14; break;
+            case 5: target = 17; break;
+            default: return "حكاية الحي الأولى خلصت.";
+        }
+
+        int remaining = Mathf.Max(0, target - data.completedDeliveries);
+        if (remaining == 0)
+        {
+            return "في طلب خاص مستنيك في الشيفت الجاي.";
+        }
+        if (remaining == 1)
+        {
+            return "توصيلة واحدة كمان وطلب خاص هيفتح.";
+        }
+        if (remaining == 2)
+        {
+            return "توصيلتين كمان وطلب خاص هيفتح.";
+        }
+
+        return remaining + " توصيلات كمان وطلب خاص هيفتح.";
     }
 
     private static ElMandoobOrder Story(
@@ -302,6 +345,11 @@ public static class ElMandoobContent
 
     private static string Pick(IList<string> values)
     {
+        if (values == null || values.Count == 0)
+        {
+            return string.Empty;
+        }
+
         return values[UnityEngine.Random.Range(0, values.Count)];
     }
 }
