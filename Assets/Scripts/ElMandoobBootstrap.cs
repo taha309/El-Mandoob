@@ -39,7 +39,6 @@ public static class ElMandoobArabic
             { "Next level", "الشيفت اللي بعده" },
             { "TASK FAILED", "الشيفت فشل" },
             { "TASK COMPLETED", "الشيفت خلص" },
-            { "Task completed", "الشيفت خلص" },
             { "PAUSED", "واقف مؤقتًا" },
             { "Pause", "إيقاف مؤقت" },
             { "Audio", "الصوت" },
