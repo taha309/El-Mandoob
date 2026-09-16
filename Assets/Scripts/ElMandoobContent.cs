@@ -29,7 +29,7 @@ public class ElMandoobOrder
 /// <summary>
 /// Egyptian content database for El Mandoob.
 /// Keeps the ready-made delivery loop intact while giving every generated job
-/// a business, customer, neighborhood, order, payout and optional story beat.
+/// a business, customer, neighborhood, sensible order, payout and optional story beat.
 /// </summary>
 public static class ElMandoobContent
 {
@@ -83,18 +83,6 @@ public static class ElMandoobContent
         "جنب القهوة، العمارة القديمة"
     };
 
-    private static readonly string[] Items =
-    {
-        "طلب أكل",
-        "أدوية",
-        "بقالة",
-        "مستندات",
-        "كتب وملازم",
-        "عصير ومياه",
-        "مخبوزات",
-        "طرد صغير"
-    };
-
     private static readonly string[] PickupMessages =
     {
         "الطلب جاهز. متتأخرش على الزبون.",
@@ -126,11 +114,11 @@ public static class ElMandoobContent
         int basePay = UnityEngine.Random.Range(32, 48) + difficultyBonus;
         int tip = UnityEngine.Random.Range(0, 4) == 0 ? UnityEngine.Random.Range(5, 16) : 0;
 
-        string business = GetShiftBusiness(level);
+        string business = PickBusinessForLevel(level);
         string customer = Pick(Customers);
         string area = GetShiftArea(level);
         string address = Pick(Addresses);
-        string item = Pick(Items);
+        string item = PickItemForBusiness(business);
 
         return new ElMandoobOrder
         {
@@ -165,6 +153,38 @@ public static class ElMandoobContent
         return Businesses[index];
     }
 
+    private static string PickBusinessForLevel(int level)
+    {
+        // Early shifts expose a smaller neighborhood roster, then more businesses join in.
+        int availableCount = Mathf.Clamp(3 + (Mathf.Max(1, level) - 1) / 2, 3, Businesses.Length);
+        return Businesses[UnityEngine.Random.Range(0, availableCount)];
+    }
+
+    private static string PickItemForBusiness(string business)
+    {
+        switch (business)
+        {
+            case "كشري أبو حمدي":
+                return Pick(new[] { "كشري كبير", "كشري وسط + دقة", "٢ كشري صغير", "كشري كبير + شطة" });
+            case "صيدلية النور":
+                return Pick(new[] { "أدوية وروشتة", "دواء ضغط", "فيتامينات", "طلب صيدلية صغير" });
+            case "فرن الحارة":
+                return Pick(new[] { "عيش ومخبوزات", "فينو وعيش", "فطير صغير", "مخبوزات سخنة" });
+            case "بقالة عم سيد":
+                return Pick(new[] { "بقالة للبيت", "مياه وعصير", "سكر وشاي", "منظفات وحاجات للبيت" });
+            case "مطبعة النيل":
+                return Pick(new[] { "مستندات مطبوعة", "ملف أوراق", "نسخ وتصوير", "ظرف مستندات" });
+            case "بيتزا المعلم":
+                return Pick(new[] { "بيتزا وسط", "٢ بيتزا صغيرة", "بيتزا كبيرة + مشروب", "بيتزا خضار" });
+            case "عصير قصب السعادة":
+                return Pick(new[] { "٢ قصب", "عصير مانجا", "كوكتيل فواكه", "قصب + مياه" });
+            case "مكتبة الطالب":
+                return Pick(new[] { "كتب وملازم", "ملازم مطبوعة", "أدوات مكتبية", "دفاتر وأقلام" });
+            default:
+                return "طرد صغير";
+        }
+    }
+
     private static ElMandoobOrder TryCreateStoryOrder(GameData data, int level)
     {
         if (data == null)
@@ -192,11 +212,11 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_sealed_envelope", 1,
-                "مطبعة النيل", "شريف", shiftArea, "العمارة اللي قصاد الصيدلية",
+                "مطبعة النيل", "ندى", shiftArea, "العمارة اللي قصاد الصيدلية",
                 "ظرف مقفول - مستندات",
-                "في ظرف باسم شريف. قال بالحرف: يتسلّم زي ما هو.",
-                "أنا مش اللي هستلم. طلّعه لندى في العنوان المكتوب ومتكلمهاش غير لما توصل.",
-                "ندى استلمت الظرف، بس شكلها اتفاجئ لما شافت اسم المرسل.",
+                "شريف سايب ظرف لندى وقال بالحرف: يتسلّم زي ما هو.",
+                "ندى: أنا مستنياك تحت. بصراحة أنا مش فاهمة شريف باعتلي إيه.",
+                "ندى استلمت الظرف، وأول ما شافت اسم شريف ملامحها اتغيرت.",
                 70, 0, 2);
         }
 
@@ -205,10 +225,10 @@ public static class ElMandoobContent
             return Story(
                 "story_wrong_order", 2,
                 "بقالة عم سيد", "ندى", shiftArea, "الدور التاني، الشقة اللي على الشمال",
-                "كيس صغير + ظرف",
+                "كيس بقالة صغير + ظرف",
                 "ندى طلبت حاجات بسيطة، بس في ظرف اتحط مع الطلب باسمها.",
-                "أنا مطلبتش أي ظرف. استنى... الاسم اللي عليه اسمي فعلًا. سيبهولي.",
-                "قبل ما تمشي، ندى قالتلك: لو شريف بعتلك حاجة تانية، كلمني الأول.",
+                "ندى: أنا مطلبتش أي ظرف. استنى... الاسم اللي عليه اسمي فعلًا. سيبهولي.",
+                "قبل ما تمشي، ندى قالتلك: لو شريف بعتلك حاجة تانية، حاول تعرف جاية منين.",
                 65, 8, 2);
         }
 
@@ -216,11 +236,11 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_changed_address", 3,
-                "مطبعة النيل", "شريف", shiftArea, "آخر الشارع، باب حديد أزرق",
+                "مطبعة النيل", "مستلم من طرف شريف", shiftArea, "آخر الشارع، باب حديد أزرق",
                 "طرد مستندات",
                 "شريف سايب طرد وقال إن العنوان مهم جدًا.",
-                "متروحش العنوان القديم. العنوان اتغير. آخر الشارع عند الباب الأزرق.",
-                "محدش فتح الباب، لكن واحد نزل أخد الطرد من غير ما يقول اسمه.",
+                "رسالة من شريف: متروحش العنوان القديم. روح آخر الشارع عند الباب الأزرق.",
+                "محدش فتح الباب. واحد نزل أخد الطرد بسرعة ومقالش حتى اسمه.",
                 85, 0, 3);
         }
 
@@ -228,11 +248,11 @@ public static class ElMandoobContent
         {
             return Story(
                 "story_hamdy_warning", 4,
-                "كشري أبو حمدي", "عم حمدي", shiftArea, "جنب القهوة، العمارة القديمة",
-                "طلب كشري + رسالة",
-                "عم حمدي وقفك قبل ما تمشي وقالك إنه عايز يكلمك بعيد عن الزباين.",
-                "بص يا ابني... الراجل اللي اسمه شريف ده بيسأل عن المندوبين أكتر ما بيسأل عن طلباته. خلي عينك مفتوحة.",
-                "عم حمدي كتبلك رقم ندى وقالك: لو الموضوع زنق، كلمها.",
+                "كشري أبو حمدي", "مريم", shiftArea, "جنب القهوة، العمارة القديمة",
+                "كشري كبير",
+                "وأنت بتستلم الطلب، عم حمدي وطّى صوته وقالك: الراجل اللي اسمه شريف بيسأل عن المندوبين أكتر ما بيسأل عن طلباته. خلي عينك مفتوحة.",
+                "مريم: أنا جنب القهوة بالظبط، العمارة القديمة. متتوهش مني.",
+                "وصلت الطلب، بس كلام عم حمدي فضّل في دماغك. قبل ما تمشي كان مديلك رقم ندى احتياطي.",
                 55, 12, 3);
         }
 
@@ -242,9 +262,9 @@ public static class ElMandoobContent
                 "story_final_envelope", 5,
                 "مطبعة النيل", "ندى", shiftArea, "أول شارع على اليمين بعد الكشك",
                 "آخر ظرف",
-                "لقيت ظرف متساب باسمك أنت. جواه ورقة مكتوب عليها: وصّله لندى وبس.",
-                "الورق ده يثبت إن في حد بيعمل طلبات وهمية ويرجع فلوسها على حسابات مختلفة. شريف كان بيستخدم المندوبين عشان محدش يربط العناوين ببعض.",
-                "ندى خدت المستندات وقالت إنها هتتصرف فيها. أنت كملت شغلك، بس من النهارده بقيت تبص لكل طلب مرتين.",
+                "لقيت ظرف متساب باسمك أنت. جواه ورقة واحدة: وصّله لندى وبس.",
+                "ندى: الورق ده مهم. هفهمك لما توصل.",
+                "ندى شرحتلك إن الورق بيربط طلبات وهمية بفلوس بترجع على حسابات مختلفة. شريف كان بيستخدم المندوبين عشان العناوين تفضل منفصلة عن بعض.",
                 120, 20, 5);
         }
 
