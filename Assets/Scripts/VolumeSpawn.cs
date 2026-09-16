@@ -1,29 +1,36 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.UI;
+
 public class VolumeSpawn : MonoBehaviour
 {
     public AudioMixer mixer;
     public GameObject musicOn;
     public GameObject musicOff;
     public GameObject slider;
-
     public GameData data;
-    void Awake(){
+
+    void Awake()
+    {
         data = SaveSystem.Load();
-        slider.GetComponent<UnityEngine.UI.Slider>().value = data.volume;
-        mixer.SetFloat("musicvol", data.volume);
-        AudioListener.volume = data.audios;
-        if (data.audios == 0)
+
+        if (slider != null)
         {
-            musicOn.SetActive(false);
-            musicOff.SetActive(true);
+            Slider sliderComponent = slider.GetComponent<Slider>();
+            if (sliderComponent != null)
+            {
+                sliderComponent.value = data.volume;
+            }
         }
-        else
+
+        if (mixer != null)
         {
-            musicOn.SetActive(true);
-            musicOff.SetActive(false);
+            mixer.SetFloat("musicvol", data.volume);
         }
+
+        AudioListener.volume = data.audios == 0 ? 0f : 1f;
+
+        if (musicOn != null) musicOn.SetActive(data.audios != 0);
+        if (musicOff != null) musicOff.SetActive(data.audios == 0);
     }
 }
