@@ -25,7 +25,7 @@ public class Shield : MonoBehaviour
 
     private IEnumerator PickUp(Player player)
     {
-        player.canBeHit = false;
+        player.SetShieldActive(true);
 
         SpriteRenderer renderer = GetComponent<SpriteRenderer>();
         if (renderer != null) renderer.enabled = false;
@@ -37,7 +37,7 @@ public class Shield : MonoBehaviour
 
         if (player != null)
         {
-            player.canBeHit = true;
+            player.SetShieldActive(false);
         }
 
         Destroy(gameObject);
