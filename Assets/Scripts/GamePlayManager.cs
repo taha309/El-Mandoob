@@ -206,24 +206,10 @@ public class GamePlayManager : MonoBehaviour
             return;
         }
 
-        shopIndex = Random.Range(0, buildings.Length);
-        shop = buildings[shopIndex];
-
-        Shop shopComponent = shop.GetComponent<Shop>();
-        if (shopComponent == null)
-        {
-            shopComponent = shop.AddComponent<Shop>();
-        }
-        shopComponent.displayName = ElMandoobContent.GetShiftBusiness(level);
-        shop.tag = "Shop";
-
+        // Every building gets a House component once, then one of them becomes the active pickup.
+        // Keeping the array lets later orders move pickup points around the same ready-made district.
         for (int i = 0; i < buildings.Length; i++)
         {
-            if (i == shopIndex)
-            {
-                continue;
-            }
-
             House house = buildings[i].GetComponent<House>();
             if (house == null)
             {
@@ -231,6 +217,48 @@ public class GamePlayManager : MonoBehaviour
             }
             buildings[i].tag = "House";
         }
+
+        SelectPickupBuilding(-1);
+    }
+
+    private void SelectPickupBuilding(int avoidIndex)
+    {
+        if (buildings == null || buildings.Length < 2)
+        {
+            shop = null;
+            return;
+        }
+
+        // Turn the previous pickup back into a normal delivery building.
+        if (shop != null)
+        {
+            Shop previousShop = shop.GetComponent<Shop>();
+            if (previousShop != null)
+            {
+                previousShop.havingOrder = false;
+            }
+            shop.tag = "House";
+        }
+
+        int previousIndex = shopIndex;
+        int candidate = Random.Range(0, buildings.Length);
+        int guard = 0;
+        while ((candidate == avoidIndex || (buildings.Length > 2 && candidate == previousIndex)) && guard < 24)
+        {
+            candidate = Random.Range(0, buildings.Length);
+            guard++;
+        }
+
+        shopIndex = candidate;
+        shop = buildings[shopIndex];
+        shop.tag = "Shop";
+
+        Shop shopComponent = shop.GetComponent<Shop>();
+        if (shopComponent == null)
+        {
+            shopComponent = shop.AddComponent<Shop>();
+        }
+        shopComponent.displayName = ElMandoobContent.GetShiftBusiness(level);
     }
 
     private string BuildOrderObjective(int orderCount)
@@ -275,6 +303,7 @@ public class GamePlayManager : MonoBehaviour
         if (player != null)
         {
             player.carryingOrder = true;
+            player.BeginDelivery();
         }
 
         if (recieveButton != null)
@@ -327,7 +356,7 @@ public class GamePlayManager : MonoBehaviour
         inProcess = false;
         numDeliveredOrders++;
 
-        AwardDelivery(deliveredOrder);
+        int payout = AwardDelivery(deliveredOrder);
         ElMandoobContent.ApplyCompletedOrder(data, deliveredOrder);
         SaveSystem.Save(data);
 
@@ -343,7 +372,7 @@ public class GamePlayManager : MonoBehaviour
         if (hud != null)
         {
             hud.RefreshStats(data);
-            hud.ShowMessage(deliveredOrder.deliveredMessage);
+            hud.ShowMessage(deliveredOrder.deliveredMessage + " كسبت " + payout + " جنيه.");
             hud.SetWaitingForOrder();
         }
 
@@ -367,23 +396,23 @@ public class GamePlayManager : MonoBehaviour
             return;
         }
 
-        UpdatePointer(shop);
-        ChangeTarget(shop);
+        // Do not point to yesterday's restaurant while waiting for the next job.
+        if (pointer != null)
+        {
+            pointer.SetActive(false);
+        }
+        ChangeTarget(null);
     }
 
-    private void AwardDelivery(ElMandoobOrder order)
+    private int AwardDelivery(ElMandoobOrder order)
     {
         if (data == null || order == null)
         {
-            return;
+            return 0;
         }
 
-        int safeDeliveryBonus = 0;
-        if (player != null)
-        {
-            safeDeliveryBonus = Mathf.Max(0, player.currentLives - 1) * 5;
-        }
-
+        bool safeDelivery = player != null && player.CompleteDeliveryWasSafe();
+        int safeDeliveryBonus = safeDelivery ? 10 : 0;
         int payout = order.TotalPay + safeDeliveryBonus;
 
         currentShiftEarnings += payout;
@@ -391,20 +420,35 @@ public class GamePlayManager : MonoBehaviour
 
         data.money += payout;
         data.totalTips += order.tip;
-        data.reputation += Mathf.Max(1, order.reputationReward);
+        data.reputation += Mathf.Max(1, order.reputationReward) + (safeDelivery ? 1 : 0);
         data.completedDeliveries++;
 
         Debug.Log(
             "EL MANDOOB DELIVERY: +" + payout + " EGP | Balance: " + data.money +
-            " EGP | Customer: " + order.customerName + " | Business: " + order.businessName);
+            " EGP | Safe: " + safeDelivery + " | Customer: " + order.customerName +
+            " | Business: " + order.businessName);
+
+        return payout;
     }
 
     private IEnumerator GenerateOrder()
     {
         while (!shiftResolved)
         {
-            if (!inProcess && shop != null && buildings != null && buildings.Length > 1)
+            if (!inProcess && buildings != null && buildings.Length > 1)
             {
+                // After the first delivery, move the next pickup to a different building when possible.
+                if (numDeliveredOrders > 0)
+                {
+                    SelectPickupBuilding(destinationIndex);
+                }
+
+                if (shop == null)
+                {
+                    yield return new WaitForSeconds(1f);
+                    continue;
+                }
+
                 inProcess = true;
                 currentOrder = ElMandoobContent.CreateOrder(data, level);
 
@@ -416,19 +460,23 @@ public class GamePlayManager : MonoBehaviour
                 }
 
                 destinationIndex = Random.Range(0, buildings.Length);
-                while (destinationIndex == shopIndex)
+                int destinationGuard = 0;
+                while (destinationIndex == shopIndex && destinationGuard < 24)
                 {
                     destinationIndex = Random.Range(0, buildings.Length);
+                    destinationGuard++;
                 }
 
                 destination = buildings[destinationIndex];
+                destination.tag = "House";
                 House house = destination.GetComponent<House>();
-                if (house != null)
+                if (house == null)
                 {
-                    house.isDesination = true;
-                    house.customerName = currentOrder.customerName;
-                    house.address = currentOrder.address;
+                    house = destination.AddComponent<House>();
                 }
+                house.isDesination = true;
+                house.customerName = currentOrder.customerName;
+                house.address = currentOrder.address;
 
                 UpdatePointer(shop);
                 ChangeTarget(shop);
