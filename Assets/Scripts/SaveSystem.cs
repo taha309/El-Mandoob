@@ -1,12 +1,10 @@
 using System;
 using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 
 public static class SaveSystem
 {
     private const string SaveFileName = "el_mandoob_save.json";
-    private const string LegacyFileName = "data.dvb";
 
     public static void Save(GameData data)
     {
@@ -48,43 +46,9 @@ public static class SaveSystem
             }
         }
 
-        // One-time best-effort import from the original Delivery Boy binary save.
-        GameData legacy = TryLoadLegacy();
-        if (legacy != null)
-        {
-            Normalize(legacy);
-            Save(legacy);
-            return legacy;
-        }
-
         GameData fresh = new GameData();
         Save(fresh);
         return fresh;
-    }
-
-    private static GameData TryLoadLegacy()
-    {
-        string legacyPath = Path.Combine(Application.persistentDataPath, LegacyFileName);
-        if (!File.Exists(legacyPath))
-        {
-            return null;
-        }
-
-        try
-        {
-#pragma warning disable SYSLIB0011
-            BinaryFormatter formatter = new BinaryFormatter();
-            using (FileStream stream = new FileStream(legacyPath, FileMode.Open))
-            {
-                return formatter.Deserialize(stream) as GameData;
-            }
-#pragma warning restore SYSLIB0011
-        }
-        catch (Exception exception)
-        {
-            Debug.LogWarning("El Mandoob: legacy save could not be imported. " + exception.Message);
-            return null;
-        }
     }
 
     private static void Normalize(GameData data)
@@ -97,6 +61,11 @@ public static class SaveSystem
             {
                 Array.Copy(oldStars, data.stars, Mathf.Min(oldStars.Length, data.stars.Length));
             }
+        }
+
+        for (int i = 0; i < data.stars.Length; i++)
+        {
+            data.stars[i] = Mathf.Clamp(data.stars[i], 0, 3);
         }
 
         data.healths = Mathf.Clamp(data.healths <= 0 ? 1 : data.healths, 1, 3);
