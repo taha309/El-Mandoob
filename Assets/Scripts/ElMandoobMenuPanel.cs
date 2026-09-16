@@ -193,6 +193,46 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         speedButton.interactable = data.speed < 8 && data.money >= speedCost;
         enduranceButton.interactable = data.healths < 3 && data.money >= enduranceCost;
+
+        ApplyShiftLocks();
+    }
+
+    private void ApplyShiftLocks()
+    {
+        LevelSelector[] selectors = Resources.FindObjectsOfTypeAll<LevelSelector>();
+        foreach (LevelSelector selector in selectors)
+        {
+            if (selector == null || !selector.gameObject.scene.IsValid() ||
+                selector.gameObject.scene != gameObject.scene || selector.levelButton == null)
+            {
+                continue;
+            }
+
+            if (!int.TryParse(selector.levelButton.name, out int shiftNumber))
+            {
+                continue;
+            }
+
+            Button button = selector.levelButton.GetComponent<Button>();
+            if (button == null)
+            {
+                button = selector.GetComponent<Button>();
+            }
+
+            bool unlocked = shiftNumber <= data.levelUnlocked;
+            if (button != null)
+            {
+                button.interactable = unlocked;
+            }
+
+            TMP_Text label = selector.levelButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                ElMandoobBootstrap.ApplyArabicText(
+                    label,
+                    unlocked ? "شيفت " + shiftNumber : "شيفت " + shiftNumber + " - مقفول");
+            }
+        }
     }
 
     private int GetSpeedCost()
