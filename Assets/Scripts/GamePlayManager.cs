@@ -67,21 +67,34 @@ public class GamePlayManager : MonoBehaviour
             PlayerPrefs.SetInt("SelectedLevel", level);
         }
 
-        Debug.Log("EL MANDOOB SHIFT: " + level);
+        Debug.Log("EL MANDOOB SHIFT: " + level + " | " + ElMandoobContent.GetShiftArea(level));
 
         ConfigureLevel();
         ConfigureTaskUI();
         ConfigureDeliveryButtons();
         ConfigureBuildings();
 
-        hud = ElMandoobHUD.Create(data);
+        hud = ElMandoobHUD.Create(data, level);
 
         if (shop != null && destination == null)
         {
             UpdatePointer(shop);
             ChangeTarget(shop);
-            StartCoroutine(GenerateOrder());
+            StartCoroutine(StartOrderFlow());
         }
+    }
+
+    private IEnumerator StartOrderFlow()
+    {
+        if (data != null && data.completedDeliveries == 0 && hud != null)
+        {
+            hud.ShowMessage(
+                "أول شيفت ليك كمندوب. خليك هادي، اتبع السهم، استلم الطلب، وبعدها وصّله للعنوان اللي هيظهرلك.",
+                5f);
+            yield return new WaitForSecondsRealtime(4.8f);
+        }
+
+        StartCoroutine(GenerateOrder());
     }
 
     private void ConfigureLevel()
@@ -158,7 +171,9 @@ public class GamePlayManager : MonoBehaviour
         if (taskOrdersDisplay != null)
         {
             tmp1 = taskOrdersDisplay.GetComponent<TextMeshProUGUI>();
-            ElMandoobBootstrap.ApplyArabicText(tmp1, BuildOrderObjective(numTotalOrders));
+            ElMandoobBootstrap.ApplyArabicText(
+                tmp1,
+                BuildOrderObjective(numTotalOrders) + " في " + ElMandoobContent.GetShiftArea(level));
         }
 
         if (taskTimeDisplay != null)
@@ -200,6 +215,7 @@ public class GamePlayManager : MonoBehaviour
         {
             shopComponent = shop.AddComponent<Shop>();
         }
+        shopComponent.displayName = ElMandoobContent.GetShiftBusiness(level);
         shop.tag = "Shop";
 
         for (int i = 0; i < buildings.Length; i++)
