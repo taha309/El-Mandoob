@@ -8,6 +8,8 @@ public class Player : MonoBehaviour
     public FixedJoystick joystick;
     public Rigidbody2D rb;
     private Vector3 initialPosition;
+    private float baseMoveSpeed;
+    private float activeSpeedMultiplier = 1f;
 
     public int maxLives = 3;
     [HideInInspector] public int currentLives;
@@ -31,7 +33,9 @@ public class Player : MonoBehaviour
     void Start()
     {
         GameData data = SaveSystem.Load();
-        moveSpeed = Mathf.Max(5f, data.speed);
+        baseMoveSpeed = Mathf.Max(5f, data.speed);
+        activeSpeedMultiplier = 1f;
+        RefreshMoveSpeed();
         maxLives = Mathf.Clamp(2 + data.healths, 3, 5);
 
         currentLives = maxLives;
@@ -196,6 +200,25 @@ public class Player : MonoBehaviour
         bool wasSafe = !currentDeliveryHadHit;
         currentDeliveryHadHit = false;
         return wasSafe;
+    }
+
+    public void AddSpeedBoost(float multiplier)
+    {
+        float safeMultiplier = Mathf.Max(1f, multiplier);
+        activeSpeedMultiplier *= safeMultiplier;
+        RefreshMoveSpeed();
+    }
+
+    public void RemoveSpeedBoost(float multiplier)
+    {
+        float safeMultiplier = Mathf.Max(1f, multiplier);
+        activeSpeedMultiplier = Mathf.Max(1f, activeSpeedMultiplier / safeMultiplier);
+        RefreshMoveSpeed();
+    }
+
+    private void RefreshMoveSpeed()
+    {
+        moveSpeed = baseMoveSpeed * activeSpeedMultiplier;
     }
 
     public void SetShieldActive(bool active)
