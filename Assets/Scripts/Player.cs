@@ -22,6 +22,8 @@ public class Player : MonoBehaviour
 
     public Animator animator;
     private Vector2 movement;
+    private Shop nearbyShop;
+    private House nearbyHouse;
 
     void Start()
     {
@@ -85,6 +87,10 @@ public class Player : MonoBehaviour
             healthBar.SetHealth(currentLives);
         }
 
+        nearbyShop = null;
+        nearbyHouse = null;
+        HideInteractionButtons();
+
         if (rb != null)
         {
             rb.position = initialPosition;
@@ -117,32 +123,57 @@ public class Player : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Shop"))
         {
-            Shop shop = collision.gameObject.GetComponent<Shop>();
-            if (shop != null && shop.havingOrder && receiveButton != null)
-            {
-                receiveButton.gameObject.SetActive(true);
-            }
+            nearbyShop = collision.gameObject.GetComponent<Shop>();
         }
-        else if (collision.gameObject.CompareTag("House") && carryingOrder)
+        else if (collision.gameObject.CompareTag("House"))
         {
-            House house = collision.gameObject.GetComponent<House>();
-            if (house != null && house.isDesination && deliverButton != null)
-            {
-                deliverButton.gameObject.SetActive(true);
-            }
+            nearbyHouse = collision.gameObject.GetComponent<House>();
         }
+
+        RefreshInteractionButtons();
     }
 
     private void OnCollisionExit2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Shop") && receiveButton != null)
+        if (collision.gameObject.CompareTag("Shop"))
         {
-            receiveButton.gameObject.SetActive(false);
+            Shop exitingShop = collision.gameObject.GetComponent<Shop>();
+            if (nearbyShop == exitingShop)
+            {
+                nearbyShop = null;
+            }
         }
-        else if (collision.gameObject.CompareTag("House") && deliverButton != null)
+        else if (collision.gameObject.CompareTag("House"))
         {
-            deliverButton.gameObject.SetActive(false);
+            House exitingHouse = collision.gameObject.GetComponent<House>();
+            if (nearbyHouse == exitingHouse)
+            {
+                nearbyHouse = null;
+            }
         }
+
+        RefreshInteractionButtons();
+    }
+
+    public void RefreshInteractionButtons()
+    {
+        if (receiveButton != null)
+        {
+            receiveButton.gameObject.SetActive(
+                nearbyShop != null && nearbyShop.havingOrder && !carryingOrder);
+        }
+
+        if (deliverButton != null)
+        {
+            deliverButton.gameObject.SetActive(
+                nearbyHouse != null && nearbyHouse.isDesination && carryingOrder);
+        }
+    }
+
+    public void HideInteractionButtons()
+    {
+        if (receiveButton != null) receiveButton.gameObject.SetActive(false);
+        if (deliverButton != null) deliverButton.gameObject.SetActive(false);
     }
 
     private IEnumerator GetHitFlicker()
