@@ -16,13 +16,13 @@ public class House : MonoBehaviour
     private string previousCustomer;
     private Player player;
 
-    private void Start()
-    {
-        player = FindObjectOfType<Player>();
-    }
-
     private void LateUpdate()
     {
+        if (player == null)
+        {
+            player = FindObjectOfType<Player>();
+        }
+
         bool shouldShow = isDesination && player != null && player.carryingOrder;
 
         if (shouldShow)
@@ -45,5 +45,14 @@ public class House : MonoBehaviour
         }
 
         wasVisible = shouldShow;
+    }
+
+    private void OnDisable()
+    {
+        if (worldLabel != null)
+        {
+            Destroy(worldLabel.gameObject);
+            worldLabel = null;
+        }
     }
 }
