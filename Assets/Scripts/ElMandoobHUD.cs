@@ -19,7 +19,7 @@ public class ElMandoobHUD : MonoBehaviour
 
     public static ElMandoobHUD Create(GameData data)
     {
-        GameObject root = new GameObject("ElMandoobHUD");
+        GameObject root = new GameObject("ElMandoobHUD", typeof(RectTransform));
         ElMandoobHUD hud = root.AddComponent<ElMandoobHUD>();
         hud.Build(data);
         return hud;
