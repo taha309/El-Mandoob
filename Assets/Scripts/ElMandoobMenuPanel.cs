@@ -4,8 +4,9 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Adds El Mandoob progression and garage controls to the existing menu scene
-/// without requiring fragile hand edits to the original menu prefab hierarchy.
+/// Adds El Mandoob progression controls to the existing menu scene.
+/// Account/story info and upgrades are intentionally separated so the bottom-left
+/// area reads as a dedicated "تطوير" section instead of one crowded garage card.
 /// </summary>
 public class ElMandoobMenuPanel : MonoBehaviour
 {
@@ -50,8 +51,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
     private void Update()
     {
-        // Refresh the profile from disk while the menu is visible. This makes the
-        // balance/reputation update immediately after returning from a completed delivery.
         if (Time.unscaledTime < nextRefreshAt || profileText == null)
         {
             return;
@@ -85,62 +84,87 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         gameObject.AddComponent<GraphicRaycaster>();
 
-        // Keep the garage entirely on the left so it no longer covers the courier
-        // or the original center menu buttons.
-        GameObject panel = CreatePanel(
+        // Small account/story card above the upgrade section.
+        GameObject accountPanel = CreatePanel(
             transform,
-            "ProfileGarage",
-            new Vector2(0.015f, 0.035f),
-            new Vector2(0.34f, 0.40f),
+            "AccountPanel",
+            new Vector2(0.015f, 0.245f),
+            new Vector2(0.30f, 0.43f),
             new Color(0.025f, 0.03f, 0.035f, 0.92f));
 
-        TextMeshProUGUI title = CreateText(
-            panel.transform,
-            "GarageTitle",
-            new Vector2(0.05f, 0.84f),
+        TextMeshProUGUI accountTitle = CreateText(
+            accountPanel.transform,
+            "AccountTitle",
+            new Vector2(0.05f, 0.78f),
             new Vector2(0.95f, 0.96f),
-            27f,
+            26f,
             TextAlignmentOptions.Right);
-        ElMandoobBootstrap.ApplyArabicText(title, "المندوب - حسابك والكراج");
+        ElMandoobBootstrap.ApplyArabicText(accountTitle, "حسابك");
 
         profileText = CreateText(
-            panel.transform,
+            accountPanel.transform,
             "Profile",
-            new Vector2(0.05f, 0.69f),
-            new Vector2(0.95f, 0.84f),
-            19f,
+            new Vector2(0.05f, 0.48f),
+            new Vector2(0.95f, 0.78f),
+            18f,
             TextAlignmentOptions.Right);
 
         storyText = CreateText(
-            panel.transform,
+            accountPanel.transform,
             "Story",
-            new Vector2(0.05f, 0.49f),
-            new Vector2(0.95f, 0.69f),
-            17f,
+            new Vector2(0.05f, 0.08f),
+            new Vector2(0.95f, 0.47f),
+            16f,
             TextAlignmentOptions.Right);
 
+        // Standalone upgrade card in the bottom-left corner.
+        GameObject upgradePanel = CreatePanel(
+            transform,
+            "UpgradePanel",
+            new Vector2(0.015f, 0.025f),
+            new Vector2(0.36f, 0.225f),
+            new Color(0.055f, 0.14f, 0.10f, 0.97f));
+
+        TextMeshProUGUI upgradeTitle = CreateText(
+            upgradePanel.transform,
+            "UpgradeTitle",
+            new Vector2(0.05f, 0.78f),
+            new Vector2(0.95f, 0.96f),
+            30f,
+            TextAlignmentOptions.Center);
+        ElMandoobBootstrap.ApplyArabicText(upgradeTitle, "تطوير");
+
+        TextMeshProUGUI upgradeHint = CreateText(
+            upgradePanel.transform,
+            "UpgradeHint",
+            new Vector2(0.05f, 0.64f),
+            new Vector2(0.95f, 0.79f),
+            16f,
+            TextAlignmentOptions.Center);
+        ElMandoobBootstrap.ApplyArabicText(upgradeHint, "استخدم فلوس التوصيلات عشان تطوّر المندوب");
+
         speedButton = CreateButton(
-            panel.transform,
+            upgradePanel.transform,
             "SpeedUpgrade",
-            new Vector2(0.05f, 0.30f),
-            new Vector2(0.95f, 0.46f),
+            new Vector2(0.05f, 0.36f),
+            new Vector2(0.95f, 0.61f),
             out speedButtonText);
         speedButton.onClick.AddListener(BuySpeedUpgrade);
 
         enduranceButton = CreateButton(
-            panel.transform,
+            upgradePanel.transform,
             "EnduranceUpgrade",
-            new Vector2(0.05f, 0.12f),
-            new Vector2(0.95f, 0.28f),
+            new Vector2(0.05f, 0.10f),
+            new Vector2(0.95f, 0.34f),
             out enduranceButtonText);
         enduranceButton.onClick.AddListener(BuyEnduranceUpgrade);
 
         messageText = CreateText(
-            panel.transform,
-            "GarageMessage",
-            new Vector2(0.05f, 0.015f),
-            new Vector2(0.95f, 0.11f),
-            16f,
+            upgradePanel.transform,
+            "UpgradeMessage",
+            new Vector2(0.05f, 0.01f),
+            new Vector2(0.95f, 0.09f),
+            14f,
             TextAlignmentOptions.Center);
 
         Refresh();
@@ -150,6 +174,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
     {
         data = SaveSystem.Load();
         int cost = GetSpeedCost();
+
         if (data.speed >= 8)
         {
             ShowMessage("السرعة وصلت لأقصى تطوير.");
@@ -158,7 +183,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         if (data.money < cost)
         {
-            ShowMessage("محتاج " + (cost - data.money) + " جنيه كمان للتطوير ده.");
+            ShowMessage("محتاج " + (cost - data.money) + " جنيه كمان.");
             return;
         }
 
@@ -166,13 +191,14 @@ public class ElMandoobMenuPanel : MonoBehaviour
         data.speed++;
         SaveSystem.Save(data);
         Refresh();
-        ShowMessage("تمام. المندوب بقى أسرع في الشارع.");
+        ShowMessage("تم تطوير السرعة.");
     }
 
     private void BuyEnduranceUpgrade()
     {
         data = SaveSystem.Load();
         int cost = GetEnduranceCost();
+
         if (data.healths >= 3)
         {
             ShowMessage("التحمل وصل لأقصى تطوير.");
@@ -181,7 +207,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         if (data.money < cost)
         {
-            ShowMessage("محتاج " + (cost - data.money) + " جنيه كمان للتطوير ده.");
+            ShowMessage("محتاج " + (cost - data.money) + " جنيه كمان.");
             return;
         }
 
@@ -189,7 +215,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
         data.healths++;
         SaveSystem.Save(data);
         Refresh();
-        ShowMessage("جهزت نفسك للشيفتات الأصعب.");
+        ShowMessage("تم تطوير التحمل.");
     }
 
     private void Refresh()
@@ -207,8 +233,9 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         ElMandoobBootstrap.ApplyArabicText(
             profileText,
-            "الرصيد: " + data.money + " جنيه | السمعة: " + data.reputation +
-            " | شيفت " + data.levelUnlocked);
+            "الرصيد: " + data.money + " جنيه\n" +
+            "السمعة: " + data.reputation + "\n" +
+            "مفتوح لحد شيفت " + data.levelUnlocked);
 
         ElMandoobBootstrap.ApplyArabicText(
             storyText,
@@ -295,11 +322,13 @@ public class ElMandoobMenuPanel : MonoBehaviour
     {
         GameObject panel = new GameObject(objectName, typeof(RectTransform), typeof(Image));
         panel.transform.SetParent(parent, false);
+
         RectTransform rect = panel.GetComponent<RectTransform>();
         rect.anchorMin = anchorMin;
         rect.anchorMax = anchorMax;
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
+
         Image image = panel.GetComponent<Image>();
         image.color = color;
         image.raycastTarget = false;
@@ -323,12 +352,12 @@ public class ElMandoobMenuPanel : MonoBehaviour
         rect.offsetMax = Vector2.zero;
 
         Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color(0.16f, 0.33f, 0.25f, 0.96f);
+        image.color = new Color(0.20f, 0.36f, 0.27f, 0.98f);
 
         Button button = buttonObject.GetComponent<Button>();
         ColorBlock colors = button.colors;
-        colors.highlightedColor = new Color(0.21f, 0.43f, 0.32f, 1f);
-        colors.pressedColor = new Color(0.11f, 0.24f, 0.18f, 1f);
+        colors.highlightedColor = new Color(0.25f, 0.45f, 0.34f, 1f);
+        colors.pressedColor = new Color(0.12f, 0.24f, 0.18f, 1f);
         colors.disabledColor = new Color(0.12f, 0.12f, 0.13f, 0.65f);
         button.colors = colors;
 
