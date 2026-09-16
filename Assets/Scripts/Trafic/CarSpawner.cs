@@ -1,26 +1,53 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class CarSpawner : MonoBehaviour
 {
     public GameObject[] carprefabs;
-    [SerializeField] private Waypoints waypoints ;
+    [SerializeField] private Waypoints waypoints;
 
     private void Start()
     {
+        if (waypoints == null || waypoints.transform.childCount == 0 ||
+            carprefabs == null || carprefabs.Length == 0)
+        {
+            Debug.LogWarning("El Mandoob: CarSpawner is missing cars or waypoints.", this);
+            enabled = false;
+            return;
+        }
+
         foreach (Transform waypoint in waypoints.transform)
         {
-            GameObject car = Instantiate(SelectACarPrefab(), transform);
-            car.GetComponent<WaypointMover>().currentWaypoint = waypoint;
+            GameObject prefab = SelectCarPrefab();
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            GameObject car = Instantiate(prefab, transform);
+            WaypointMover mover = car.GetComponent<WaypointMover>();
+            if (mover == null)
+            {
+                Debug.LogWarning("El Mandoob: waypoint traffic prefab has no WaypointMover component.", car);
+                Destroy(car);
+                continue;
+            }
+
+            mover.MyWaypoint = waypoints;
+            mover.MyCurrentWaypoint = waypoint;
         }
-        // Instantiate(SelectACarPrefab(), transform);
     }
 
-    private GameObject SelectACarPrefab()
+    private GameObject SelectCarPrefab()
     {
-        var randomIndex = Random.Range(0, carprefabs.Length);
-        return carprefabs[randomIndex];
+        for (int attempt = 0; attempt < carprefabs.Length; attempt++)
+        {
+            GameObject candidate = carprefabs[Random.Range(0, carprefabs.Length)];
+            if (candidate != null)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 }
