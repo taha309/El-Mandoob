@@ -18,6 +18,9 @@ public class GameData
     public int money;
     public int reputation;
     public int completedDeliveries;
+    public int completedShifts;
+    public int totalTips;
+    public int storyStage;
 
     public GameData()
     {
@@ -30,6 +33,9 @@ public class GameData
         money = 0;
         reputation = 0;
         completedDeliveries = 0;
+        completedShifts = 0;
+        totalTips = 0;
+        storyStage = 0;
 
         for (int i = 0; i < stars.Length; i++)
         {
