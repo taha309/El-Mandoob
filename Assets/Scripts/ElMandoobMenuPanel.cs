@@ -43,7 +43,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
             return;
         }
 
-        GameObject root = new GameObject("ElMandoobMenuPanel");
+        GameObject root = new GameObject("ElMandoobMenuPanel", typeof(RectTransform));
         root.AddComponent<ElMandoobMenuPanel>().Build();
     }
 
