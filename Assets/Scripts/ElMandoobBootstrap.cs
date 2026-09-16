@@ -20,11 +20,13 @@ public static class ElMandoobArabic
             { "Deliver your orders", "وصّل طلباتك" },
             { "Play", "ابدأ الشغل" },
             { "Start", "ابدأ" },
+            { "Start game", "ابدأ الشغل" },
             { "Tutorial", "طريقة اللعب" },
             { "Settings", "الإعدادات" },
             { "Quit", "خروج" },
             { "Exit", "خروج" },
             { "Back", "رجوع" },
+            { "Back to menu", "ارجع للقائمة" },
             { "Continue", "كمّل" },
             { "Resume", "كمّل" },
             { "Restart", "ابدأ من جديد" },
@@ -51,6 +53,12 @@ public static class ElMandoobArabic
             { "Cancel", "إلغاء" },
             { "Close", "اقفل" },
             { "Game Over", "الشيفت خلص" },
+            { "Move with the joystick", "اتحرك بالجوستيك" },
+            { "Avoid cars", "خلي بالك من العربيات" },
+            { "Read your tasks", "اقرأ المطلوب قبل ما تبدأ" },
+            { "Are you sure you want to quit?", "متأكد إنك عايز تخرج؟" },
+            { "Yes", "أيوه" },
+            { "No", "لأ" },
             { "New Text", "" }
         };
 
@@ -110,14 +118,23 @@ public class ElMandoobBootstrap : MonoBehaviour
     private static TMP_FontAsset runtimeArabicFont;
     private static bool warnedAboutFont;
 
+    // These are tried directly rather than relying on an exact-name match from
+    // GetOSInstalledFontNames. Unity can report Windows font family names differently
+    // across machines even when the font itself is installed.
     private static readonly string[] PreferredArabicFonts =
     {
+        "Tahoma",
+        "Arial",
+        "Segoe UI",
+        "Traditional Arabic",
+        "Simplified Arabic",
+        "Arabic Typesetting",
         "Noto Sans Arabic",
         "Noto Naskh Arabic",
-        "Segoe UI",
-        "Tahoma",
-        "Arial"
+        "Arial Unicode MS"
     };
+
+    private const string ArabicProbe = "المندوب شريف ندى عم حسن جنيه طلب توصيل";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -199,37 +216,99 @@ public class ElMandoobBootstrap : MonoBehaviour
             return runtimeArabicFont;
         }
 
-        string[] installedFonts = Font.GetOSInstalledFontNames();
-        string selectedFont = PreferredArabicFonts.FirstOrDefault(preferred =>
-            installedFonts.Any(installed =>
-                string.Equals(installed, preferred, StringComparison.OrdinalIgnoreCase)));
-
-        if (string.IsNullOrEmpty(selectedFont))
+        // First try known Windows/Arabic font families directly. This avoids the
+        // exact-name lookup that caused the first test machine to fall back to
+        // LiberationSans SDF and render Arabic as square boxes.
+        foreach (string fontName in PreferredArabicFonts)
         {
-            if (!warnedAboutFont)
+            TMP_FontAsset candidate = TryCreateArabicFont(fontName);
+            if (candidate != null)
             {
-                Debug.LogWarning(
-                    "El Mandoob: no preferred Arabic system font was found. " +
-                    "Arabic shaping is active, but a bundled Arabic TMP font must be added before release.");
-                warnedAboutFont = true;
+                runtimeArabicFont = candidate;
+                return runtimeArabicFont;
+            }
+        }
+
+        // Then try any installed font whose family name strongly suggests Arabic support.
+        string[] installedFonts = Font.GetOSInstalledFontNames();
+        if (installedFonts != null)
+        {
+            foreach (string installed in installedFonts)
+            {
+                if (string.IsNullOrWhiteSpace(installed))
+                {
+                    continue;
+                }
+
+                string lower = installed.ToLowerInvariant();
+                bool likelyArabic = lower.Contains("arab") || lower.Contains("naskh") ||
+                                    lower.Contains("nask") || lower.Contains("kufi") ||
+                                    lower.Contains("tahoma") || lower.Contains("arial") ||
+                                    lower.Contains("segoe");
+
+                if (!likelyArabic)
+                {
+                    continue;
+                }
+
+                TMP_FontAsset candidate = TryCreateArabicFont(installed);
+                if (candidate != null)
+                {
+                    runtimeArabicFont = candidate;
+                    return runtimeArabicFont;
+                }
+            }
+        }
+
+        if (!warnedAboutFont)
+        {
+            Debug.LogWarning(
+                "El Mandoob: could not create an Arabic-capable runtime TMP font. " +
+                "Arabic text will require a bundled TMP font asset before release.");
+            warnedAboutFont = true;
+        }
+
+        return null;
+    }
+
+    private static TMP_FontAsset TryCreateArabicFont(string fontName)
+    {
+        try
+        {
+            Font sourceFont = Font.CreateDynamicFontFromOSFont(fontName, 32);
+            if (sourceFont == null)
+            {
+                return null;
             }
 
+            string shapedProbe = ElMandoobArabic.Shape(ArabicProbe);
+            sourceFont.RequestCharactersInTexture(shapedProbe, 32, FontStyle.Normal);
+
+            bool hasArabic = shapedProbe
+                .Where(character => !char.IsWhiteSpace(character) && !char.IsDigit(character))
+                .Any(character => sourceFont.HasCharacter(character));
+
+            if (!hasArabic)
+            {
+                return null;
+            }
+
+            TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(sourceFont);
+            if (fontAsset == null)
+            {
+                return null;
+            }
+
+            fontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+            fontAsset.name = "ElMandoob_RuntimeArabic_" + fontName.Replace(' ', '_');
+
+            Debug.Log("El Mandoob Arabic font: " + fontName);
+            return fontAsset;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning("El Mandoob: Arabic font candidate failed (" + fontName + "). " + exception.Message);
             return null;
         }
-
-        Font sourceFont = Font.CreateDynamicFontFromOSFont(selectedFont, 32);
-        if (sourceFont == null)
-        {
-            return null;
-        }
-
-        runtimeArabicFont = TMP_FontAsset.CreateFontAsset(sourceFont);
-        if (runtimeArabicFont != null)
-        {
-            runtimeArabicFont.atlasPopulationMode = AtlasPopulationMode.Dynamic;
-            runtimeArabicFont.name = "ElMandoob_RuntimeArabic";
-        }
-
-        return runtimeArabicFont;
     }
 }
