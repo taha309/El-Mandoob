@@ -1,6 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Waypoints : MonoBehaviour
@@ -10,30 +7,53 @@ public class Waypoints : MonoBehaviour
 
     [Header("Path Setting")]
     [SerializeField] private bool canloop = true;
-
     [SerializeField] private bool isMovingForward = true;
+
+    public int Count
+    {
+        get { return transform.childCount; }
+    }
+
     private void OnDrawGizmos()
     {
-        foreach(Transform t in transform)
-        {   
+        int count = transform.childCount;
+        if (count == 0)
+        {
+            return;
+        }
+
+        foreach (Transform waypoint in transform)
+        {
             Gizmos.color = Color.blue;
-            Gizmos.DrawWireSphere(t.position, waypointSize);
+            Gizmos.DrawWireSphere(waypoint.position, waypointSize);
         }
 
         Gizmos.color = Color.red;
-        for(int i = 0; i < transform.childCount -1; i++)
+        for (int i = 0; i < count - 1; i++)
         {
             Gizmos.DrawLine(transform.GetChild(i).position, transform.GetChild(i + 1).position);
         }
-        if (canloop)
+
+        if (canloop && count > 1)
         {
-            Gizmos.DrawLine(transform.GetChild(transform.childCount -1).position, transform.GetChild(0).position);
+            Gizmos.DrawLine(transform.GetChild(count - 1).position, transform.GetChild(0).position);
         }
     }
 
     public Transform GetNextWaypoint(Transform currentWaypoint)
     {
-        if (currentWaypoint == null)
+        int count = transform.childCount;
+        if (count == 0)
+        {
+            return null;
+        }
+
+        if (currentWaypoint == null || currentWaypoint.parent != transform)
+        {
+            return transform.GetChild(0);
+        }
+
+        if (count == 1)
         {
             return transform.GetChild(0);
         }
@@ -43,27 +63,18 @@ public class Waypoints : MonoBehaviour
 
         if (isMovingForward)
         {
-            nextIndex += 1;
-            if (nextIndex == transform.childCount)
+            nextIndex++;
+            if (nextIndex >= count)
             {
-                if (canloop)
-                {
-                    nextIndex = 0;
-                } else {
-                    nextIndex -= 1;
-                }
+                nextIndex = canloop ? 0 : count - 1;
             }
-        } else {
-            nextIndex -= 1;
-
+        }
+        else
+        {
+            nextIndex--;
             if (nextIndex < 0)
             {
-                if (canloop)
-                {
-                    nextIndex = transform.childCount -1;
-                } else {
-                    nextIndex += 1;
-                }
+                nextIndex = canloop ? count - 1 : 0;
             }
         }
 
