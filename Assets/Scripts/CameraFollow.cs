@@ -1,27 +1,48 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
     private Transform player;
+    private Vector3 targetPosition;
 
-    private Vector3 tempPos;
-    [SerializeField]
-    private float minX, maxX, minY, maxY;
-    // Start is called before the first frame update
+    [SerializeField] private float minX, maxX, minY, maxY;
+    [SerializeField] private float followSharpness = 12f;
+
     void Start()
     {
-        player  = GameObject.FindWithTag("Player").transform;
+        GameObject playerObject = GameObject.FindWithTag("Player");
+        if (playerObject != null)
+        {
+            player = playerObject.transform;
+        }
+        else
+        {
+            Debug.LogWarning("El Mandoob: CameraFollow could not find an object tagged Player.");
+        }
     }
 
-    // Update is called once per frame
     void LateUpdate()
     {
-        tempPos = transform.position;
-        tempPos.x = player.position.x;
-        tempPos.y = player.position.y;
+        if (player == null)
+        {
+            return;
+        }
 
-        transform.position = tempPos;
+        targetPosition = transform.position;
+        targetPosition.x = player.position.x;
+        targetPosition.y = player.position.y;
+
+        // Respect scene bounds only when they were actually configured in the Inspector.
+        if (maxX > minX)
+        {
+            targetPosition.x = Mathf.Clamp(targetPosition.x, minX, maxX);
+        }
+        if (maxY > minY)
+        {
+            targetPosition.y = Mathf.Clamp(targetPosition.y, minY, maxY);
+        }
+
+        float t = 1f - Mathf.Exp(-Mathf.Max(0.1f, followSharpness) * Time.deltaTime);
+        transform.position = Vector3.Lerp(transform.position, targetPosition, t);
     }
 }
