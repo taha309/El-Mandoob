@@ -27,6 +27,12 @@ public class Shield : MonoBehaviour
     {
         player.SetShieldActive(true);
 
+        ElMandoobHUD hud = FindObjectOfType<ElMandoobHUD>();
+        if (hud != null)
+        {
+            hud.ShowMessage("حماية مؤقتة! العربيات مش هتخصم منك تحمل دلوقتي.", 2.8f);
+        }
+
         SpriteRenderer renderer = GetComponent<SpriteRenderer>();
         if (renderer != null) renderer.enabled = false;
 
