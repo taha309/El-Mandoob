@@ -49,57 +49,58 @@ public class ElMandoobHUD : MonoBehaviour
 
         gameObject.AddComponent<GraphicRaycaster>();
 
+        // Keep the order card clear of the original pause button on the far right.
         topPanel = CreatePanel(
             "TopPanel",
-            new Vector2(0.55f, 0.72f),
-            new Vector2(0.985f, 0.985f),
-            new Color(0.04f, 0.04f, 0.05f, 0.84f));
+            new Vector2(0.60f, 0.70f),
+            new Vector2(0.88f, 0.985f),
+            new Color(0.025f, 0.03f, 0.035f, 0.90f));
 
         chapterText = CreateText(
             topPanel.transform,
             "Chapter",
-            new Vector2(0.04f, 0.80f),
-            new Vector2(0.96f, 0.96f),
-            25f,
+            new Vector2(0.05f, 0.80f),
+            new Vector2(0.95f, 0.95f),
+            23f,
             TextAlignmentOptions.Right);
 
         statsText = CreateText(
             topPanel.transform,
             "Stats",
-            new Vector2(0.04f, 0.66f),
-            new Vector2(0.96f, 0.80f),
-            22f,
+            new Vector2(0.05f, 0.65f),
+            new Vector2(0.95f, 0.80f),
+            19f,
             TextAlignmentOptions.Right);
 
         progressText = CreateText(
             topPanel.transform,
             "ShiftProgress",
-            new Vector2(0.04f, 0.51f),
-            new Vector2(0.96f, 0.66f),
-            21f,
+            new Vector2(0.05f, 0.50f),
+            new Vector2(0.95f, 0.65f),
+            19f,
             TextAlignmentOptions.Right);
 
         orderText = CreateText(
             topPanel.transform,
             "CurrentOrder",
-            new Vector2(0.04f, 0.04f),
-            new Vector2(0.96f, 0.50f),
-            24f,
+            new Vector2(0.05f, 0.05f),
+            new Vector2(0.95f, 0.49f),
+            21f,
             TextAlignmentOptions.TopRight);
         orderText.enableWordWrapping = true;
 
         notificationPanel = CreatePanel(
             "NotificationPanel",
-            new Vector2(0.20f, 0.055f),
-            new Vector2(0.80f, 0.20f),
-            new Color(0.03f, 0.03f, 0.04f, 0.90f));
+            new Vector2(0.25f, 0.045f),
+            new Vector2(0.75f, 0.145f),
+            new Color(0.025f, 0.025f, 0.03f, 0.92f));
 
         notificationText = CreateText(
             notificationPanel.transform,
             "Notification",
-            new Vector2(0.04f, 0.12f),
-            new Vector2(0.96f, 0.88f),
-            28f,
+            new Vector2(0.05f, 0.12f),
+            new Vector2(0.95f, 0.88f),
+            23f,
             TextAlignmentOptions.Center);
         notificationText.enableWordWrapping = true;
         notificationPanel.SetActive(false);
@@ -122,8 +123,8 @@ public class ElMandoobHUD : MonoBehaviour
 
         ElMandoobBootstrap.ApplyArabicText(
             statsText,
-            "الرصيد: " + data.money + " جنيه   |   السمعة: " + data.reputation +
-            "   |   التوصيلات: " + data.completedDeliveries);
+            "الرصيد " + data.money + " جنيه  |  السمعة " + data.reputation +
+            "  |  التوصيلات " + data.completedDeliveries);
 
         int deliveredThisShift = Mathf.Max(0, data.completedDeliveries - startingGlobalDeliveries);
         SetShiftProgress(deliveredThisShift, requiredDeliveries, bonusMode);
@@ -177,13 +178,15 @@ public class ElMandoobHUD : MonoBehaviour
         string header = order.storyOrder ? "طلب خاص" : "طلب جديد";
         string destinationLine = carrying
             ? "الزبون: " + order.customerName + " - " + order.areaName
-            : "الاستلام من: " + order.businessName;
+            : "الاستلام: " + order.businessName;
 
         string instruction = carrying
             ? "العنوان: " + order.address
             : "روح للمحل واستلم الطلب";
 
-        string payout = "الأجرة: " + order.basePay + " جنيه";
+        string payout = carrying
+            ? "الأجرة عند التسليم: " + order.basePay + " جنيه"
+            : "الأجرة بعد التسليم: " + order.basePay + " جنيه";
         if (order.tip > 0)
         {
             payout += " + بقشيش " + order.tip;
@@ -195,7 +198,7 @@ public class ElMandoobHUD : MonoBehaviour
             "الطلب: " + order.itemDescription + "\n" + instruction + "\n" + payout);
     }
 
-    public void ShowMessage(string message, float seconds = 4.5f)
+    public void ShowMessage(string message, float seconds = 2.6f)
     {
         if (string.IsNullOrWhiteSpace(message) || notificationPanel == null || resultHidden)
         {
@@ -207,7 +210,10 @@ public class ElMandoobHUD : MonoBehaviour
             StopCoroutine(notificationRoutine);
         }
 
-        notificationRoutine = StartCoroutine(ShowMessageRoutine(message, seconds));
+        // Keep gameplay readable. Old callers may request 5-7 second messages,
+        // but short notifications work much better on this small mobile viewport.
+        float visibleSeconds = Mathf.Clamp(seconds, 1.8f, 3.0f);
+        notificationRoutine = StartCoroutine(ShowMessageRoutine(message, visibleSeconds));
     }
 
     public void SetPaused(bool paused)
@@ -245,8 +251,8 @@ public class ElMandoobHUD : MonoBehaviour
     public void ShowStoryFinished()
     {
         ShowMessage(
-            "خلصت حكاية أول حي. لسه تقدر تكمل شيفتات وتجمع فلوس وسمعة، والحكايات الجاية هتتفتح مع مناطق جديدة.",
-            7f);
+            "خلصت حكاية أول حي. لسه تقدر تكمل شيفتات وتجمع فلوس وسمعة.",
+            3f);
     }
 
     private IEnumerator ShowMessageRoutine(string message, float seconds)
@@ -314,7 +320,7 @@ public class ElMandoobHUD : MonoBehaviour
         text.color = Color.white;
         text.raycastTarget = false;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(15f, fontSize - 8f);
+        text.fontSizeMin = Mathf.Max(14f, fontSize - 7f);
         text.fontSizeMax = fontSize;
 
         return text;
