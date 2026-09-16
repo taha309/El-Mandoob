@@ -16,6 +16,8 @@ public class Player : MonoBehaviour
     private int flickerAmount = 6;
     private float flickerDuration = 0.1f;
     public bool canBeHit = true;
+    private bool hitRecoveryActive;
+    private int shieldLocks;
 
     [SerializeField] private Button receiveButton, deliverButton;
     public bool carryingOrder = false;
@@ -38,6 +40,7 @@ public class Player : MonoBehaviour
         }
 
         initialPosition = transform.position;
+        RefreshInvulnerability();
     }
 
     void Update()
@@ -176,9 +179,29 @@ public class Player : MonoBehaviour
         if (deliverButton != null) deliverButton.gameObject.SetActive(false);
     }
 
+    public void SetShieldActive(bool active)
+    {
+        if (active)
+        {
+            shieldLocks++;
+        }
+        else
+        {
+            shieldLocks = Mathf.Max(0, shieldLocks - 1);
+        }
+
+        RefreshInvulnerability();
+    }
+
+    private void RefreshInvulnerability()
+    {
+        canBeHit = !hitRecoveryActive && shieldLocks == 0;
+    }
+
     private IEnumerator GetHitFlicker()
     {
-        canBeHit = false;
+        hitRecoveryActive = true;
+        RefreshInvulnerability();
 
         for (int i = 0; i < flickerAmount; i++)
         {
@@ -195,6 +218,7 @@ public class Player : MonoBehaviour
             yield return new WaitForSeconds(flickerDuration);
         }
 
-        canBeHit = true;
+        hitRecoveryActive = false;
+        RefreshInvulnerability();
     }
 }
