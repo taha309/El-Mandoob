@@ -18,6 +18,7 @@ public class ElMandoobHUD : MonoBehaviour
     private GameObject notificationPanel;
     private Coroutine notificationRoutine;
     private int currentLevel;
+    private bool resultHidden;
 
     public static ElMandoobHUD Create(GameData data, int level)
     {
@@ -146,7 +147,7 @@ public class ElMandoobHUD : MonoBehaviour
 
     public void ShowMessage(string message, float seconds = 4.5f)
     {
-        if (string.IsNullOrWhiteSpace(message) || notificationPanel == null)
+        if (string.IsNullOrWhiteSpace(message) || notificationPanel == null || resultHidden)
         {
             return;
         }
@@ -159,8 +160,30 @@ public class ElMandoobHUD : MonoBehaviour
         notificationRoutine = StartCoroutine(ShowMessageRoutine(message, seconds));
     }
 
+    public void SetPaused(bool paused)
+    {
+        if (resultHidden)
+        {
+            return;
+        }
+
+        if (topPanel != null)
+        {
+            topPanel.SetActive(!paused);
+        }
+
+        // Notifications are deliberately hidden while paused. If a timed notification
+        // finishes in the background, resuming simply returns to the current order card.
+        if (notificationPanel != null)
+        {
+            notificationPanel.SetActive(false);
+        }
+    }
+
     public void HideForResult()
     {
+        resultHidden = true;
+
         if (notificationRoutine != null)
         {
             StopCoroutine(notificationRoutine);
