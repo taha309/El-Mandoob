@@ -1,61 +1,108 @@
-# Delivery Boy
+# المندوب — El Mandoob
 
-## Overview
+**El Mandoob** is an Egyptian Arabic delivery arcade/story game built in Unity.
 
-"Delivery Boy" is a mobile arcade game developed using Unity. Set in the dense traffic of Vietnam, players control Cat Khanh, an employee of the “1xBest” delivery company, and navigate through city blocks to complete deliveries within a strict time frame. This project encapsulates both the challenges of being a delivery boy and the thrilling, fast-paced gameplay that is sure to keep players engaged and entertained.
+The project is being developed from the open-source **Delivery Boy** project by the 1xBest student team. The original project is MIT licensed; attribution is preserved below and in the repository license history.
 
-This project was developed as part of the course "Introduction to Software Engineering" at Hanoi University of Science and Technology. The project was developed by 1xBest, a team of 6 students:
+## Current Direction
 
-- [Hồ Minh Khôi](https://github.com/hmkhoi2701)
-- [Nguyễn Ngọc Toàn](https://github.com/nntoan209)
-- [Trương Quang Bình](https://github.com/quangbinh113)
-- [Trần Cát Khánh](https://github.com/khanhha1005)
-- [Nguyễn Thiên Hoàn](https://github.com/Bigbynth)
-- [Phạm Tiến Sơn](https://github.com/phamson02)
+The player works as a delivery rider in a compact Cairo/Giza-inspired district. Normal jobs introduce local businesses and recurring customers while special deliveries gradually form a neighborhood mystery.
 
-![Delivery Boy the game](./docs/images/delivery-boy.png)
+The game is designed around a focused loop rather than a giant open world:
 
-## Storyline
+1. Receive a delivery job.
+2. Reach the pickup business.
+3. Collect the order.
+4. Navigate traffic and obstacles.
+5. Deliver to the customer.
+6. Earn EGP, tips and reputation.
+7. Upgrade speed/endurance.
+8. Unlock harder shifts and story deliveries.
 
-Cat Khanh faces the task of navigating the challenging traffic of Vietnam to fulfill his deliveries on time, in line with the policies of the “1xBest” delivery company that prioritize speed over employee safety. Players are thrown into the heart of the action, and must dodge oncoming traffic, pedestrians and other obstacles to ensure that each delivery reaches its destination within the set time limit. Your mission is to help Khanh master his navigation skills, and ensure that each delivery is successfully completed. Do you have what it takes to help him accomplish his job?
+## Language
 
-## Gameplay
+Egyptian Arabic (`ar-EG`) is the original/default language for the game.
 
-In "Delivery Boy", players control Cat Khanh across a minimalized city block. The shop's location is fixed at each level, but the delivery locations are randomly generated. The objective is to dodge traffic while crossing roads to deliver the goods within a strict time frame. It's a test of reflexes, strategy, and a bit of luck.
+- Egyptian Arabic UI and dialogue
+- Right-to-left Arabic shaping through RTLTMPro
+- Egyptian names, businesses, neighborhoods and customer messages
+- English can be added later as an optional localization
 
-![Gameplay of Delivery Boy](./docs/images/gameplay.png)
+## Story
 
-For more screenshots, please follow this [link](./docs/screenshots.md).
+The first neighborhood arc starts as an ordinary delivery job.
 
-## Download the Game
+The player becomes familiar with recurring customers such as an elderly customer who orders medicine and local business owners who recognize the rider. Later, a customer named Shereef starts sending unusually specific sealed-document deliveries. A recipient named Nada says she never requested one of the envelopes, addresses begin changing at the last moment, and a local restaurant owner warns the player that the sender seems more interested in couriers than his deliveries.
 
-You can download the APK of the game using [this link](https://drive.google.com/file/d/137IxJR-sbTB6c_pwvJ5bRBdKUMWrY72d/view?usp=sharing).
+The first arc concludes when the player receives documents tying several suspicious orders and refund records together. The game remains non-combat: tension comes from routes, messages, customers and information discovered through work.
 
-## Getting Started
+## Progression
 
-You will need to have Unity installed to open and run this project. Once you've done that, you can clone this repository and open the project in Unity. Then, simply hit play to start testing the game!
+El Mandoob currently tracks:
 
-## Building the Project
+- EGP balance
+- delivery count
+- completed shifts
+- reputation
+- tips
+- story chapter
+- speed upgrades
+- endurance upgrades
+- unlocked shifts
+- best star rating for each shift
 
-1. Open Unity and load the project.
-2. Navigate to File -> Build Settings.
-3. Select Android or iOS based on your preference.
-4. Click on 'Build' and select the output folder.
+Progress is stored in `el_mandoob_save.json` under Unity's persistent data path.
 
-## Contributing
+## Controls
 
-We are more than happy to accept external contributions to the project in the form of feedback, bug reports and even better - pull requests. If you find a bug in the project (and you don't have the time or skills to fix it), please submit an issue in the GitHub issue tracker.
+### Mobile
+The original on-screen joystick remains supported.
 
-## Feedback
+### Desktop
+- `WASD` or arrow keys: move
+- UI buttons: receive/deliver/pause/menu actions
 
-Any feedback about the gameplay, design or any other aspect of "Delivery Boy" is greatly appreciated. Feel free to reach out to us via our GitHub profiles or send an email.
+## Unity Version
+
+Use **Unity 2021.3.24f1** for this project.
+
+Do not upgrade the project merely because a newer Unity version is installed.
+
+## Main Scenes
+
+- `Assets/Scenes/menu.unity`
+- `Assets/Scenes/Scene_Base.unity`
+- `Assets/Scenes/NewScene.unity`
+
+## Development Branch
+
+Active conversion work is being developed on:
+
+`dev/el-mandoob`
+
+## Third-Party Assets
+
+The upstream project contains imported art, fonts, packages and other third-party material. The MIT license for the project code does not automatically prove that every imported asset is covered by the same terms.
+
+See `THIRD_PARTY_ASSET_AUDIT.md` before any public/commercial release.
+
+## Upstream Project Attribution
+
+El Mandoob is based on **Delivery Boy**:
+
+https://github.com/phamson02/DeliveryBoy-UnityGame
+
+Delivery Boy was developed for the Introduction to Software Engineering course at Hanoi University of Science and Technology by the 1xBest team:
+
+- Hồ Minh Khôi — https://github.com/hmkhoi2701
+- Nguyễn Ngọc Toàn — https://github.com/nntoan209
+- Trương Quang Bình — https://github.com/quangbinh113
+- Trần Cát Khánh — https://github.com/khanhha1005
+- Nguyễn Thiên Hoàn — https://github.com/Bigbynth
+- Phạm Tiến Sơn — https://github.com/phamson02
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+The upstream Delivery Boy project is distributed under the MIT License. Keep the existing `LICENSE` file and required copyright/license notices when distributing derivative code.
 
-## Acknowledgments
-
-We would like to thank the entire team for their dedication and hard work on this project, as well as the Unity community for their invaluable resources and support.
-
-Remember, Cat Khanh is depending on you. So download the game, and get to work!
+Asset licenses must be audited separately before release.
