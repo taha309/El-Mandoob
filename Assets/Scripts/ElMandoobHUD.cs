@@ -14,6 +14,7 @@ public class ElMandoobHUD : MonoBehaviour
     private TextMeshProUGUI chapterText;
     private TextMeshProUGUI orderText;
     private TextMeshProUGUI notificationText;
+    private GameObject topPanel;
     private GameObject notificationPanel;
     private Coroutine notificationRoutine;
     private int currentLevel;
@@ -40,7 +41,7 @@ public class ElMandoobHUD : MonoBehaviour
 
         gameObject.AddComponent<GraphicRaycaster>();
 
-        GameObject topPanel = CreatePanel(
+        topPanel = CreatePanel(
             "TopPanel",
             new Vector2(0.57f, 0.79f),
             new Vector2(0.985f, 0.985f),
@@ -145,7 +146,7 @@ public class ElMandoobHUD : MonoBehaviour
 
     public void ShowMessage(string message, float seconds = 4.5f)
     {
-        if (string.IsNullOrWhiteSpace(message))
+        if (string.IsNullOrWhiteSpace(message) || notificationPanel == null)
         {
             return;
         }
@@ -156,6 +157,24 @@ public class ElMandoobHUD : MonoBehaviour
         }
 
         notificationRoutine = StartCoroutine(ShowMessageRoutine(message, seconds));
+    }
+
+    public void HideForResult()
+    {
+        if (notificationRoutine != null)
+        {
+            StopCoroutine(notificationRoutine);
+            notificationRoutine = null;
+        }
+
+        if (topPanel != null)
+        {
+            topPanel.SetActive(false);
+        }
+        if (notificationPanel != null)
+        {
+            notificationPanel.SetActive(false);
+        }
     }
 
     public void ShowStoryFinished()
