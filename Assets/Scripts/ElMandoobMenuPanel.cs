@@ -96,8 +96,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
         BuildUpgradeModal();
         upgradeModal.SetActive(false);
 
-        // Shift locks belong to progression and should be applied even if the player
-        // never opens the upgrade screen.
         RefreshData();
         ApplyShiftLocks();
     }
@@ -107,8 +105,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
         upgradeModal = new GameObject(
             "UpgradeModal",
             typeof(RectTransform),
-            typeof(Image),
-            typeof(Button),
             typeof(CanvasGroup));
         upgradeModal.transform.SetParent(transform, false);
 
@@ -118,17 +114,32 @@ public class ElMandoobMenuPanel : MonoBehaviour
         modalRect.offsetMin = Vector2.zero;
         modalRect.offsetMax = Vector2.zero;
 
-        Image backdrop = upgradeModal.GetComponent<Image>();
+        upgradeCanvasGroup = upgradeModal.GetComponent<CanvasGroup>();
+        upgradeCanvasGroup.alpha = 1f;
+
+        // The backdrop is its own button behind the window. This prevents clicks on
+        // empty parts of the window from bubbling into a parent close button.
+        GameObject backdropObject = new GameObject(
+            "Backdrop",
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(Button));
+        backdropObject.transform.SetParent(upgradeModal.transform, false);
+
+        RectTransform backdropRect = backdropObject.GetComponent<RectTransform>();
+        backdropRect.anchorMin = Vector2.zero;
+        backdropRect.anchorMax = Vector2.one;
+        backdropRect.offsetMin = Vector2.zero;
+        backdropRect.offsetMax = Vector2.zero;
+
+        Image backdrop = backdropObject.GetComponent<Image>();
         backdrop.color = new Color(0f, 0f, 0f, 0.68f);
         backdrop.raycastTarget = true;
 
-        Button backdropButton = upgradeModal.GetComponent<Button>();
+        Button backdropButton = backdropObject.GetComponent<Button>();
         backdropButton.transition = Selectable.Transition.None;
         backdropButton.targetGraphic = backdrop;
         backdropButton.onClick.AddListener(CloseUpgradePanel);
-
-        upgradeCanvasGroup = upgradeModal.GetComponent<CanvasGroup>();
-        upgradeCanvasGroup.alpha = 1f;
 
         GameObject windowObject = CreatePanel(
             upgradeModal.transform,
@@ -141,8 +152,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
         windowImage.raycastTarget = true;
         upgradeWindow = windowObject.GetComponent<RectTransform>();
 
-        // Accent strip gives the modal a deliberate game-screen hierarchy without
-        // importing new art assets.
         CreatePanel(
             windowObject.transform,
             "HeaderAccent",
@@ -184,7 +193,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
             23f,
             TextAlignmentOptions.Center);
 
-        // SPEED CARD
         GameObject speedCard = CreatePanel(
             windowObject.transform,
             "SpeedCard",
@@ -218,7 +226,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
             out speedButtonImage);
         speedButton.onClick.AddListener(BuySpeedUpgrade);
 
-        // ENDURANCE CARD
         GameObject enduranceCard = CreatePanel(
             windowObject.transform,
             "EnduranceCard",
@@ -471,8 +478,6 @@ public class ElMandoobMenuPanel : MonoBehaviour
             enduranceButtonText,
             enduranceMax ? "آخر تطوير" : "تطوير\n" + enduranceCost + " جنيه");
 
-        // Maxed upgrades are disabled. Unaffordable upgrades remain clickable so the
-        // player gets a useful "ناقصك X جنيه" message instead of silent failure.
         speedButton.interactable = !speedMax;
         enduranceButton.interactable = !enduranceMax;
 
