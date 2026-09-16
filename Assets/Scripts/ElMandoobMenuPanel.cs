@@ -17,6 +17,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
     private Button enduranceButton;
     private TextMeshProUGUI speedButtonText;
     private TextMeshProUGUI enduranceButtonText;
+    private float nextRefreshAt;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -47,6 +48,27 @@ public class ElMandoobMenuPanel : MonoBehaviour
         root.AddComponent<ElMandoobMenuPanel>().Build();
     }
 
+    private void Update()
+    {
+        // Refresh the profile from disk while the menu is visible. This makes the
+        // balance/reputation update immediately after returning from a completed delivery.
+        if (Time.unscaledTime < nextRefreshAt || profileText == null)
+        {
+            return;
+        }
+
+        nextRefreshAt = Time.unscaledTime + 0.75f;
+        Refresh();
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus && profileText != null)
+        {
+            Refresh();
+        }
+    }
+
     private void Build()
     {
         Time.timeScale = 1f;
@@ -63,60 +85,62 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         gameObject.AddComponent<GraphicRaycaster>();
 
+        // Keep the garage entirely on the left so it no longer covers the courier
+        // or the original center menu buttons.
         GameObject panel = CreatePanel(
             transform,
             "ProfileGarage",
             new Vector2(0.015f, 0.035f),
-            new Vector2(0.39f, 0.45f),
-            new Color(0.035f, 0.035f, 0.045f, 0.90f));
+            new Vector2(0.34f, 0.40f),
+            new Color(0.025f, 0.03f, 0.035f, 0.92f));
 
         TextMeshProUGUI title = CreateText(
             panel.transform,
             "GarageTitle",
-            new Vector2(0.05f, 0.83f),
+            new Vector2(0.05f, 0.84f),
             new Vector2(0.95f, 0.96f),
-            30f,
+            27f,
             TextAlignmentOptions.Right);
         ElMandoobBootstrap.ApplyArabicText(title, "المندوب - حسابك والكراج");
 
         profileText = CreateText(
             panel.transform,
             "Profile",
-            new Vector2(0.05f, 0.66f),
-            new Vector2(0.95f, 0.83f),
-            22f,
+            new Vector2(0.05f, 0.69f),
+            new Vector2(0.95f, 0.84f),
+            19f,
             TextAlignmentOptions.Right);
 
         storyText = CreateText(
             panel.transform,
             "Story",
-            new Vector2(0.05f, 0.47f),
-            new Vector2(0.95f, 0.66f),
-            20f,
+            new Vector2(0.05f, 0.49f),
+            new Vector2(0.95f, 0.69f),
+            17f,
             TextAlignmentOptions.Right);
 
         speedButton = CreateButton(
             panel.transform,
             "SpeedUpgrade",
-            new Vector2(0.05f, 0.28f),
-            new Vector2(0.95f, 0.45f),
+            new Vector2(0.05f, 0.30f),
+            new Vector2(0.95f, 0.46f),
             out speedButtonText);
         speedButton.onClick.AddListener(BuySpeedUpgrade);
 
         enduranceButton = CreateButton(
             panel.transform,
             "EnduranceUpgrade",
-            new Vector2(0.05f, 0.10f),
-            new Vector2(0.95f, 0.27f),
+            new Vector2(0.05f, 0.12f),
+            new Vector2(0.95f, 0.28f),
             out enduranceButtonText);
         enduranceButton.onClick.AddListener(BuyEnduranceUpgrade);
 
         messageText = CreateText(
             panel.transform,
             "GarageMessage",
-            new Vector2(0.05f, 0.01f),
-            new Vector2(0.95f, 0.10f),
-            18f,
+            new Vector2(0.05f, 0.015f),
+            new Vector2(0.95f, 0.11f),
+            16f,
             TextAlignmentOptions.Center);
 
         Refresh();
@@ -124,6 +148,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
     private void BuySpeedUpgrade()
     {
+        data = SaveSystem.Load();
         int cost = GetSpeedCost();
         if (data.speed >= 8)
         {
@@ -146,6 +171,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
     private void BuyEnduranceUpgrade()
     {
+        data = SaveSystem.Load();
         int cost = GetEnduranceCost();
         if (data.healths >= 3)
         {
@@ -168,12 +194,21 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
     private void Refresh()
     {
-        data = SaveSystem.Load();
+        GameData latest = SaveSystem.Load();
+        if (latest != null)
+        {
+            data = latest;
+        }
+
+        if (data == null)
+        {
+            return;
+        }
 
         ElMandoobBootstrap.ApplyArabicText(
             profileText,
             "الرصيد: " + data.money + " جنيه | السمعة: " + data.reputation +
-            " | مفتوح لحد شيفت " + data.levelUnlocked);
+            " | شيفت " + data.levelUnlocked);
 
         ElMandoobBootstrap.ApplyArabicText(
             storyText,
@@ -182,17 +217,16 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         int speedCost = GetSpeedCost();
         string speedLabel = data.speed >= 8
-            ? "سرعة المندوب: " + data.speed + "/8 - آخر تطوير"
+            ? "السرعة " + data.speed + "/8 - آخر تطوير"
             : "طوّر السرعة لـ " + (data.speed + 1) + " - " + speedCost + " جنيه";
         ElMandoobBootstrap.ApplyArabicText(speedButtonText, speedLabel);
 
         int enduranceCost = GetEnduranceCost();
         string enduranceLabel = data.healths >= 3
-            ? "التحمل: " + data.healths + "/3 - آخر تطوير"
+            ? "التحمل " + data.healths + "/3 - آخر تطوير"
             : "طوّر التحمل لـ " + (data.healths + 1) + " - " + enduranceCost + " جنيه";
         ElMandoobBootstrap.ApplyArabicText(enduranceButtonText, enduranceLabel);
 
-        // Keep unaffordable upgrades clickable so the player receives useful feedback.
         speedButton.interactable = data.speed < 8;
         enduranceButton.interactable = data.healths < 3;
 
@@ -303,7 +337,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
             objectName + "Label",
             new Vector2(0.03f, 0.08f),
             new Vector2(0.97f, 0.92f),
-            22f,
+            18f,
             TextAlignmentOptions.Center);
 
         return button;
@@ -328,7 +362,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
         text.fontSize = fontSize;
-        text.fontSizeMin = Mathf.Max(14f, fontSize - 7f);
+        text.fontSizeMin = Mathf.Max(12f, fontSize - 6f);
         text.fontSizeMax = fontSize;
         text.enableAutoSizing = true;
         text.enableWordWrapping = true;
