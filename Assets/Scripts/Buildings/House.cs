@@ -12,15 +12,23 @@ public class House : MonoBehaviour
     public string address = "العنوان";
 
     private ElMandoobWorldLabel worldLabel;
-    private bool wasDestination;
+    private bool wasVisible;
     private string previousCustomer;
+    private Player player;
+
+    private void Start()
+    {
+        player = FindObjectOfType<Player>();
+    }
 
     private void LateUpdate()
     {
-        if (isDesination)
+        bool shouldShow = isDesination && player != null && player.carryingOrder;
+
+        if (shouldShow)
         {
             string labelText = "توصيل لـ " + customerName;
-            if (!wasDestination || worldLabel == null || previousCustomer != customerName)
+            if (!wasVisible || worldLabel == null || previousCustomer != customerName)
             {
                 worldLabel = ElMandoobWorldLabel.Attach(
                     gameObject,
@@ -30,12 +38,12 @@ public class House : MonoBehaviour
                 previousCustomer = customerName;
             }
         }
-        else if (wasDestination && worldLabel != null)
+        else if (wasVisible && worldLabel != null)
         {
             Destroy(worldLabel.gameObject);
             worldLabel = null;
         }
 
-        wasDestination = isDesination;
+        wasVisible = shouldShow;
     }
 }
