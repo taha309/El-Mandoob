@@ -10,16 +10,14 @@ public class Player : MonoBehaviour
     private Vector3 initialPosition;
 
     public int maxLives = 3;
-    [HideInInspector]
-    public int currentLives;
+    [HideInInspector] public int currentLives;
     public HealthBar healthBar;
     public SpriteRenderer sprite;
     private int flickerAmount = 6;
     private float flickerDuration = 0.1f;
     public bool canBeHit = true;
 
-    [SerializeField]
-    private Button receiveButton, deliverButton;
+    [SerializeField] private Button receiveButton, deliverButton;
     public bool carryingOrder = false;
 
     public Animator animator;
@@ -36,6 +34,7 @@ public class Player : MonoBehaviour
         {
             healthBar.SetMaxHealth(maxLives);
         }
+
         initialPosition = transform.position;
     }
 
@@ -44,11 +43,11 @@ public class Player : MonoBehaviour
         Vector2 joystickMovement = Vector2.zero;
         if (joystick != null)
         {
-            joystickMovement = new Vector2(joystick.Horizontal, joystick.Vertical);
+            joystickMovement = Vector2.ClampMagnitude(
+                new Vector2(joystick.Horizontal, joystick.Vertical),
+                1f);
         }
 
-        // Desktop fallback makes the project testable with WASD/arrow keys without
-        // removing the original mobile joystick controls.
         Vector2 keyboardMovement = new Vector2(
             Input.GetAxisRaw("Horizontal"),
             Input.GetAxisRaw("Vertical"));
@@ -75,24 +74,41 @@ public class Player : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Vehicles") && canBeHit)
+        if (!collision.CompareTag("Vehicles") || !canBeHit)
         {
-            currentLives -= 1;
-            if (healthBar != null)
-            {
-                healthBar.SetHealth(currentLives);
-            }
+            return;
+        }
 
+        currentLives = Mathf.Max(0, currentLives - 1);
+        if (healthBar != null)
+        {
+            healthBar.SetHealth(currentLives);
+        }
+
+        if (rb != null)
+        {
+            rb.position = initialPosition;
+            rb.velocity = Vector2.zero;
+        }
+        else
+        {
             transform.position = initialPosition;
-            StartCoroutine(GetHitFlicker());
+        }
 
-            if (currentLives <= 0)
+        ElMandoobHUD hud = FindObjectOfType<ElMandoobHUD>();
+        if (hud != null && currentLives > 0)
+        {
+            hud.ShowMessage("خلي بالك من العربيات! فاضلك " + currentLives + " تحمل.", 2.5f);
+        }
+
+        StartCoroutine(GetHitFlicker());
+
+        if (currentLives <= 0)
+        {
+            GamePlayManager manager = FindObjectOfType<GamePlayManager>();
+            if (manager != null)
             {
-                GamePlayManager manager = FindObjectOfType<GamePlayManager>();
-                if (manager != null)
-                {
-                    manager.gameOver();
-                }
+                manager.gameOver();
             }
         }
     }
@@ -119,19 +135,20 @@ public class Player : MonoBehaviour
 
     private void OnCollisionExit2D(Collision2D collision)
     {
-        if (deliverButton != null)
-        {
-            deliverButton.gameObject.SetActive(false);
-        }
-        if (receiveButton != null)
+        if (collision.gameObject.CompareTag("Shop") && receiveButton != null)
         {
             receiveButton.gameObject.SetActive(false);
         }
+        else if (collision.gameObject.CompareTag("House") && deliverButton != null)
+        {
+            deliverButton.gameObject.SetActive(false);
+        }
     }
 
-    IEnumerator GetHitFlicker()
+    private IEnumerator GetHitFlicker()
     {
         canBeHit = false;
+
         for (int i = 0; i < flickerAmount; i++)
         {
             if (sprite != null)
@@ -146,6 +163,7 @@ public class Player : MonoBehaviour
             }
             yield return new WaitForSeconds(flickerDuration);
         }
+
         canBeHit = true;
     }
 }
