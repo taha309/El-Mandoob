@@ -1,14 +1,13 @@
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.UI;
 
 public class VolumeManager : MonoBehaviour
 {
     public AudioMixer mixer;
-
     public GameObject musicOn;
     public GameObject musicOff;
     public GameObject slider;
-
     public GameData data;
 
     private void Start()
@@ -21,14 +20,17 @@ public class VolumeManager : MonoBehaviour
             mixer.SetFloat("musicvol", data.volume);
         }
 
-        if (musicOn != null)
+        if (slider != null)
         {
-            musicOn.SetActive(data.audios != 0);
+            Slider sliderComponent = slider.GetComponent<Slider>();
+            if (sliderComponent != null)
+            {
+                sliderComponent.value = data.volume;
+            }
         }
-        if (musicOff != null)
-        {
-            musicOff.SetActive(data.audios == 0);
-        }
+
+        if (musicOn != null) musicOn.SetActive(data.audios != 0);
+        if (musicOff != null) musicOff.SetActive(data.audios == 0);
     }
 
     public void SetLevel(float sliderValue)
@@ -45,7 +47,7 @@ public class VolumeManager : MonoBehaviour
     public void btnOn()
     {
         EnsureData();
-        AudioListener.volume = 0;
+        AudioListener.volume = 0f;
         if (musicOn != null) musicOn.SetActive(false);
         if (musicOff != null) musicOff.SetActive(true);
         data.audios = 0;
@@ -55,7 +57,7 @@ public class VolumeManager : MonoBehaviour
     public void btnOff()
     {
         EnsureData();
-        AudioListener.volume = 1;
+        AudioListener.volume = 1f;
         if (musicOn != null) musicOn.SetActive(true);
         if (musicOff != null) musicOff.SetActive(false);
         data.audios = 1;
