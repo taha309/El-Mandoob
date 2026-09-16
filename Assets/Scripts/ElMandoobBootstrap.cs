@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -10,7 +9,7 @@ using UnityEngine.SceneManagement;
 /// <summary>
 /// Egyptian Arabic UI support for El Mandoob.
 /// The source project stores many labels directly in scenes/prefabs, so known legacy
-/// labels are translated at runtime while all new El Mandoob systems use ApplyArabicText.
+/// labels are translated when a scene loads while all new systems use ApplyArabicText.
 /// </summary>
 public static class ElMandoobArabic
 {
@@ -138,7 +137,6 @@ public class ElMandoobBootstrap : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-        StartCoroutine(RefreshVisibleLegacyText());
     }
 
     private void OnDisable()
@@ -149,16 +147,6 @@ public class ElMandoobBootstrap : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         ApplyArabicToLoadedScene(scene);
-    }
-
-    private IEnumerator RefreshVisibleLegacyText()
-    {
-        WaitForSecondsRealtime delay = new WaitForSecondsRealtime(0.75f);
-        while (true)
-        {
-            ApplyArabicToLoadedScene(SceneManager.GetActiveScene());
-            yield return delay;
-        }
     }
 
     private void ApplyArabicToLoadedScene(Scene scene)
