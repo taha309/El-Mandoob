@@ -66,7 +66,9 @@ public static class ElMandoobContent
         "المنيل",
         "المهندسين",
         "بين السرايات",
-        "الجيزة"
+        "الجيزة",
+        "إمبابة",
+        "الهرم"
     };
 
     private static readonly string[] Addresses =
@@ -124,9 +126,9 @@ public static class ElMandoobContent
         int basePay = UnityEngine.Random.Range(32, 48) + difficultyBonus;
         int tip = UnityEngine.Random.Range(0, 4) == 0 ? UnityEngine.Random.Range(5, 16) : 0;
 
-        string business = Pick(Businesses);
+        string business = GetShiftBusiness(level);
         string customer = Pick(Customers);
-        string area = Pick(Areas);
+        string area = GetShiftArea(level);
         string address = Pick(Addresses);
         string item = Pick(Items);
 
@@ -149,6 +151,18 @@ public static class ElMandoobContent
             storyOrder = false,
             storyStage = -1
         };
+    }
+
+    public static string GetShiftArea(int level)
+    {
+        int index = Mathf.Clamp(level - 1, 0, Areas.Length - 1);
+        return Areas[index];
+    }
+
+    public static string GetShiftBusiness(int level)
+    {
+        int index = Mathf.Clamp(level - 1, 0, Businesses.Length - 1);
+        return Businesses[index];
     }
 
     private static ElMandoobOrder TryCreateStoryOrder(GameData data)
