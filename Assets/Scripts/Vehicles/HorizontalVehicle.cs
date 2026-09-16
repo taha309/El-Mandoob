@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class HorizontalVehicle : MonoBehaviour
@@ -11,50 +9,78 @@ public class HorizontalVehicle : MonoBehaviour
 
     private Rigidbody2D myBody;
     private Vector2 frontPosition;
-    // Start is called before the first frame update
+
+    private const float StopTimeout = 2f;
+    private const float IgnoreDuration = 0.75f;
+    private float currentStopTime;
+    private float ignoreTimer;
+
     void Awake()
     {
         myBody = GetComponent<Rigidbody2D>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        myBody.velocity = new Vector2(speed, myBody.velocity.y);
-        frontPosition = transform.position;
-        if (direction == "left"){
-            frontPosition.x += 2;
-            for (int i=2; i<4; i++){
-                frontPosition.x += 1f;
-                if (isObjectHere(frontPosition)){
-                    myBody.velocity = new Vector2(0, myBody.velocity.y);
-                }
-            }
+        if (myBody == null)
+        {
+            return;
         }
-        else if (direction == "right"){
-            frontPosition.x -= 2;
-            for (int i=2; i<4; i++){
-                frontPosition.x -= 1f;
-                if (isObjectHere(frontPosition)){
-                    myBody.velocity = new Vector2(0, myBody.velocity.y);
-                }
-            }
+
+        if (ignoreTimer > 0f)
+        {
+            ignoreTimer -= Time.deltaTime;
+        }
+
+        float signedSpeed = direction == "right" ? -Mathf.Abs(speed) : Mathf.Abs(speed);
+        myBody.velocity = new Vector2(signedSpeed, myBody.velocity.y);
+
+        if (ignoreTimer > 0f)
+        {
+            currentStopTime = 0f;
+            return;
+        }
+
+        bool blocked = HasVehicleAhead();
+        if (!blocked)
+        {
+            currentStopTime = 0f;
+            return;
+        }
+
+        myBody.velocity = new Vector2(0f, myBody.velocity.y);
+        currentStopTime += Time.deltaTime;
+
+        if (currentStopTime >= StopTimeout)
+        {
+            currentStopTime = 0f;
+            ignoreTimer = IgnoreDuration;
         }
     }
 
-    bool isObjectHere(Vector2 position)
+    private bool HasVehicleAhead()
     {
-        Collider2D intersecting = Physics2D.OverlapCircle(position, 0.01f);
-        if (intersecting == null)
+        frontPosition = transform.position;
+        float directionSign = direction == "right" ? -1f : 1f;
+        frontPosition.x += 2f * directionSign;
+
+        for (int i = 0; i < 2; i++)
         {
-            return false;
+            frontPosition.x += directionSign;
+            if (IsVehicleHere(frontPosition))
+            {
+                return true;
+            }
         }
-        else if (intersecting.CompareTag("Vehicles"))
-        {
-            return true;
-        }
-        else{
-            return false;
-        }
+
+        return false;
+    }
+
+    private bool IsVehicleHere(Vector2 position)
+    {
+        Collider2D intersecting = Physics2D.OverlapCircle(position, 0.08f);
+        return intersecting != null &&
+               intersecting.gameObject != gameObject &&
+               intersecting.CompareTag("Vehicles");
     }
 }
