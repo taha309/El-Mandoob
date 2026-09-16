@@ -80,21 +80,8 @@ public class GamePlayManager : MonoBehaviour
         {
             UpdatePointer(shop);
             ChangeTarget(shop);
-            StartCoroutine(StartOrderFlow());
+            StartCoroutine(GenerateOrder());
         }
-    }
-
-    private IEnumerator StartOrderFlow()
-    {
-        if (data != null && data.completedDeliveries == 0 && hud != null)
-        {
-            hud.ShowMessage(
-                "أول شيفت ليك كمندوب. خليك هادي، اتبع السهم، استلم الطلب، وبعدها وصّله للعنوان اللي هيظهرلك.",
-                5f);
-            yield return new WaitForSecondsRealtime(4.8f);
-        }
-
-        StartCoroutine(GenerateOrder());
     }
 
     private void ConfigureLevel()
@@ -431,7 +418,15 @@ public class GamePlayManager : MonoBehaviour
                 if (hud != null)
                 {
                     hud.SetOrder(currentOrder, false);
-                    hud.ShowMessage(currentOrder.pickupMessage);
+
+                    string message = currentOrder.pickupMessage;
+                    if (data.completedDeliveries == 0 && numDeliveredOrders == 0)
+                    {
+                        message = "أول شيفت ليك كمندوب. اتبع السهم للمحل، استلم الطلب، وبعدها وصّله للعنوان. " +
+                                  currentOrder.pickupMessage;
+                    }
+
+                    hud.ShowMessage(message, data.completedDeliveries == 0 ? 6f : 4.5f);
                 }
             }
 
