@@ -25,25 +25,53 @@ public class WaypointMover : MonoBehaviour
         set { waypoints = value; }
     }
 
-    // Start is called before the first frame update
     void Start()
     {
-        currentWaypoint = waypoints.GetNextWaypoint(currentWaypoint);
-        transform.position = currentWaypoint.position;
+        if (waypoints == null || waypoints.Count == 0)
+        {
+            Debug.LogWarning("El Mandoob: WaypointMover has no valid waypoint path.", this);
+            enabled = false;
+            return;
+        }
 
-        currentWaypoint = waypoints.GetNextWaypoint(currentWaypoint);
-        transform.up = currentWaypoint.position - transform.position;
+        Transform spawnWaypoint = waypoints.GetNextWaypoint(currentWaypoint);
+        if (spawnWaypoint == null)
+        {
+            enabled = false;
+            return;
+        }
+
+        transform.position = spawnWaypoint.position;
+        currentWaypoint = waypoints.GetNextWaypoint(spawnWaypoint);
+
+        if (currentWaypoint != null)
+        {
+            transform.up = currentWaypoint.position - transform.position;
+        }
     }
 
-    // Update is called once per frame
     void Update()
     {
-        transform.position = Vector2.MoveTowards(transform.position, currentWaypoint.position, moveSpeed * Time.deltaTime);
-
-        if (Vector2.Distance(transform.position, currentWaypoint.position) < distanceThreshold)
+        if (currentWaypoint == null || waypoints == null)
         {
-            currentWaypoint = waypoints.GetNextWaypoint(currentWaypoint);
-            transform.up = currentWaypoint.position - transform.position;
+            return;
+        }
+
+        transform.position = Vector2.MoveTowards(
+            transform.position,
+            currentWaypoint.position,
+            Mathf.Max(0f, moveSpeed) * Time.deltaTime);
+
+        if (Vector2.Distance(transform.position, currentWaypoint.position) < Mathf.Max(0.01f, distanceThreshold))
+        {
+            Transform next = waypoints.GetNextWaypoint(currentWaypoint);
+            if (next == null)
+            {
+                enabled = false;
+                return;
+            }
+
+            currentWaypoint = next;
         }
 
         RotateTowardsWaypoint();
@@ -51,9 +79,22 @@ public class WaypointMover : MonoBehaviour
 
     private void RotateTowardsWaypoint()
     {
+        if (currentWaypoint == null)
+        {
+            return;
+        }
+
         directionToWaypoint = (currentWaypoint.position - transform.position).normalized;
+        if (directionToWaypoint.sqrMagnitude < 0.0001f)
+        {
+            return;
+        }
+
         float angle = Mathf.Atan2(directionToWaypoint.y, directionToWaypoint.x) * Mathf.Rad2Deg;
         rotationGoal = Quaternion.AngleAxis(angle, Vector3.forward);
-        transform.rotation = Quaternion.Slerp(transform.rotation, rotationGoal, rotateSpeed * Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(
+            transform.rotation,
+            rotationGoal,
+            Mathf.Max(0f, rotateSpeed) * Time.deltaTime);
     }
 }
