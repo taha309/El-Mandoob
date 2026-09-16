@@ -19,6 +19,9 @@ public class ElMandoobHUD : MonoBehaviour
     private GameObject notificationPanel;
     private Coroutine notificationRoutine;
     private int currentLevel;
+    private int startingGlobalDeliveries;
+    private int requiredDeliveries;
+    private bool bonusMode;
     private bool resultHidden;
 
     public static ElMandoobHUD Create(GameData data, int level)
@@ -26,6 +29,9 @@ public class ElMandoobHUD : MonoBehaviour
         GameObject root = new GameObject("ElMandoobHUD", typeof(RectTransform));
         ElMandoobHUD hud = root.AddComponent<ElMandoobHUD>();
         hud.currentLevel = Mathf.Clamp(level, 1, 8);
+        hud.startingGlobalDeliveries = data != null ? data.completedDeliveries : 0;
+        hud.requiredDeliveries = GetRequiredDeliveries(hud.currentLevel);
+        hud.bonusMode = hud.currentLevel >= 5;
         hud.Build(data);
         return hud;
     }
@@ -99,7 +105,6 @@ public class ElMandoobHUD : MonoBehaviour
         notificationPanel.SetActive(false);
 
         RefreshStats(data);
-        SetShiftProgress(0, 1, false);
         SetWaitingForOrder();
     }
 
@@ -119,9 +124,12 @@ public class ElMandoobHUD : MonoBehaviour
             statsText,
             "الرصيد: " + data.money + " جنيه   |   السمعة: " + data.reputation +
             "   |   التوصيلات: " + data.completedDeliveries);
+
+        int deliveredThisShift = Mathf.Max(0, data.completedDeliveries - startingGlobalDeliveries);
+        SetShiftProgress(deliveredThisShift, requiredDeliveries, bonusMode);
     }
 
-    public void SetShiftProgress(int delivered, int required, bool bonusMode)
+    public void SetShiftProgress(int delivered, int required, bool isBonusMode)
     {
         if (progressText == null)
         {
@@ -132,17 +140,22 @@ public class ElMandoobHUD : MonoBehaviour
         required = Mathf.Max(1, required);
 
         string message;
-        if (!bonusMode || delivered < required)
+        if (!isBonusMode || delivered < required)
         {
             message = "تقدم الشيفت: " + delivered + " / " + required;
         }
         else
         {
             int extras = delivered - required;
-            int nextStarIn = extras >= 4 ? 0 : 2 - (extras % 2);
-            message = extras >= 4
-                ? "المطلوب خلص - وصلت لأقصى تقييم"
-                : "المطلوب خلص - " + nextStarIn + " توصيلات زيادة للنجمة اللي بعدها";
+            if (extras >= 4)
+            {
+                message = "المطلوب خلص - وصلت لأقصى تقييم";
+            }
+            else
+            {
+                int nextStarIn = 2 - (extras % 2);
+                message = "المطلوب خلص - " + nextStarIn + " توصيلات زيادة للنجمة اللي بعدها";
+            }
         }
 
         ElMandoobBootstrap.ApplyArabicText(progressText, message);
@@ -245,11 +258,22 @@ public class ElMandoobHUD : MonoBehaviour
         notificationRoutine = null;
     }
 
-    private GameObject CreatePanel(
-        string objectName,
-        Vector2 anchorMin,
-        Vector2 anchorMax,
-        Color color)
+    private static int GetRequiredDeliveries(int level)
+    {
+        switch (Mathf.Clamp(level, 1, 8))
+        {
+            case 1: return 1;
+            case 2: return 2;
+            case 3: return 3;
+            case 4: return 4;
+            case 5: return 4;
+            case 6: return 5;
+            case 7: return 6;
+            default: return 7;
+        }
+    }
+
+    private GameObject CreatePanel(string objectName, Vector2 anchorMin, Vector2 anchorMax, Color color)
     {
         GameObject panel = new GameObject(objectName, typeof(RectTransform), typeof(Image));
         panel.transform.SetParent(transform, false);
