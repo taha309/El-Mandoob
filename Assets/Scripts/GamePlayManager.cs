@@ -7,35 +7,25 @@ public class GamePlayManager : MonoBehaviour
 {
     private GameObject[] buildings;
 
-    [SerializeField]
-    private Player player;
+    [SerializeField] private Player player;
 
-    // Target pointer
-    [SerializeField]
-    private GameObject pointer;
-
+    [SerializeField] private GameObject pointer;
     private Vector3 pointerPosition;
+    [SerializeField] private TargetIndicator questPointer;
 
-    [SerializeField]
-    private TargetIndicator questPointer;
-
-    // Delivery feature
-    [SerializeField]
-    private Button recieveButton, deliverButton;
+    [SerializeField] private Button recieveButton, deliverButton;
 
     private GameObject shop, destination;
     private int destinationIndex, shopIndex;
     private bool inProcess;
     private bool carryingOrder;
 
-    // Level settings
     private int level;
     public VehicleSpawner[] vehicleSpawners;
     public CountdownTimer timer;
     private int numTotalOrders;
     private bool useTime;
 
-    // El Mandoob systems
     private GameData data;
     private ElMandoobOrder currentOrder;
     private ElMandoobHUD hud;
@@ -43,9 +33,7 @@ public class GamePlayManager : MonoBehaviour
     private int currentShiftTips;
     private bool shiftResolved;
 
-    // Results
     private int numDeliveredOrders;
-    private float remainingTime;
     private int totalMinutes, totalSeconds;
 
     public GameObject deathScreen, gameCompletedSceen, itemDeliveredCanvas,
@@ -55,17 +43,22 @@ public class GamePlayManager : MonoBehaviour
 
     void Start()
     {
+        Time.timeScale = 1f;
+
         data = SaveSystem.Load();
         currentShiftEarnings = 0;
         currentShiftTips = 0;
         shiftResolved = false;
+        numDeliveredOrders = 0;
 
         level = PlayerPrefs.GetInt("SelectedLevel", 1);
         if (level <= 0)
         {
             level = 1;
             PlayerPrefs.SetInt("SelectedLevel", level);
+            PlayerPrefs.Save();
         }
+        level = Mathf.Clamp(level, 1, 8);
 
         Debug.Log("EL MANDOOB SHIFT: " + level + " | " + ElMandoobContent.GetShiftArea(level));
 
@@ -75,6 +68,15 @@ public class GamePlayManager : MonoBehaviour
         ConfigureBuildings();
 
         hud = ElMandoobHUD.Create(data, level);
+
+        if (deliveredOredersDisplay != null)
+        {
+            tmp3 = deliveredOredersDisplay.GetComponent<TextMeshProUGUI>();
+            if (tmp3 != null)
+            {
+                tmp3.text = "0";
+            }
+        }
 
         if (shop != null && destination == null)
         {
@@ -86,6 +88,8 @@ public class GamePlayManager : MonoBehaviour
 
     private void ConfigureLevel()
     {
+        // Shifts 1-4 end immediately once the required deliveries are done.
+        // Shifts 5-8 run to the clock: meet the minimum, then push for extra-rating deliveries.
         useTime = level <= 4;
 
         if (vehicleSpawners != null)
@@ -97,8 +101,9 @@ public class GamePlayManager : MonoBehaviour
                     continue;
                 }
 
-                vehicleSpawner.carSpeed = 3 + level;
-                vehicleSpawner.carsPerSpawn = (level - 1) / 2 + 1;
+                // Keep later traffic challenging without making it faster than a fully upgraded rider.
+                vehicleSpawner.carSpeed = 3.2f + (level - 1) * 0.6f;
+                vehicleSpawner.carsPerSpawn = 1 + (level - 1) / 3;
             }
         }
 
@@ -148,8 +153,7 @@ public class GamePlayManager : MonoBehaviour
 
         if (timer != null)
         {
-            timer.minutesLeft = totalMinutes;
-            timer.secondsLeft = totalSeconds;
+            timer.SetTime(totalMinutes, totalSeconds);
         }
     }
 
@@ -158,17 +162,25 @@ public class GamePlayManager : MonoBehaviour
         if (taskOrdersDisplay != null)
         {
             tmp1 = taskOrdersDisplay.GetComponent<TextMeshProUGUI>();
+            string objective = BuildOrderObjective(numTotalOrders);
+            if (!useTime)
+            {
+                objective += " على الأقل";
+            }
+
             ElMandoobBootstrap.ApplyArabicText(
                 tmp1,
-                BuildOrderObjective(numTotalOrders) + " في " + ElMandoobContent.GetShiftArea(level));
+                objective + " في " + ElMandoobContent.GetShiftArea(level));
         }
 
         if (taskTimeDisplay != null)
         {
             tmp2 = taskTimeDisplay.GetComponent<TextMeshProUGUI>();
-            ElMandoobBootstrap.ApplyArabicText(
-                tmp2,
-                "خلّص الشيفت قبل " + totalMinutes.ToString("00") + ":" + totalSeconds.ToString("00"));
+            string timeText = totalMinutes.ToString("00") + ":" + totalSeconds.ToString("00");
+            string instruction = useTime
+                ? "خلّص المطلوب قبل " + timeText
+                : "الوقت " + timeText + " - بعد الحد الأدنى كل طلبين زيادة يرفعوا التقييم";
+            ElMandoobBootstrap.ApplyArabicText(tmp2, instruction);
         }
     }
 
@@ -223,16 +235,8 @@ public class GamePlayManager : MonoBehaviour
 
     private string BuildOrderObjective(int orderCount)
     {
-        if (orderCount == 1)
-        {
-            return "وصّل طلب واحد";
-        }
-
-        if (orderCount == 2)
-        {
-            return "وصّل طلبين";
-        }
-
+        if (orderCount == 1) return "وصّل طلب واحد";
+        if (orderCount == 2) return "وصّل طلبين";
         return "وصّل " + orderCount + " طلبات";
     }
 
@@ -244,8 +248,9 @@ public class GamePlayManager : MonoBehaviour
         }
 
         pointerPosition = building.transform.position;
-        pointerPosition.y += 2;
+        pointerPosition.y += 2f;
         pointer.transform.position = pointerPosition;
+        pointer.SetActive(true);
     }
 
     private void ChangeTarget(GameObject building)
@@ -258,7 +263,7 @@ public class GamePlayManager : MonoBehaviour
 
     public void receiveButtonClick()
     {
-        if (currentOrder == null || shop == null || destination == null)
+        if (shiftResolved || currentOrder == null || shop == null || destination == null)
         {
             return;
         }
@@ -292,7 +297,7 @@ public class GamePlayManager : MonoBehaviour
 
     public void deliverButtonClick()
     {
-        if (!carryingOrder || currentOrder == null)
+        if (shiftResolved || !carryingOrder || currentOrder == null)
         {
             return;
         }
@@ -317,7 +322,7 @@ public class GamePlayManager : MonoBehaviour
         }
 
         inProcess = false;
-        numDeliveredOrders += 1;
+        numDeliveredOrders++;
 
         AwardDelivery(deliveredOrder);
         ElMandoobContent.ApplyCompletedOrder(data, deliveredOrder);
@@ -326,7 +331,10 @@ public class GamePlayManager : MonoBehaviour
         if (deliveredOredersDisplay != null)
         {
             tmp3 = deliveredOredersDisplay.GetComponent<TextMeshProUGUI>();
-            tmp3.text = numDeliveredOrders.ToString();
+            if (tmp3 != null)
+            {
+                tmp3.text = numDeliveredOrders.ToString();
+            }
         }
 
         if (hud != null)
@@ -344,6 +352,13 @@ public class GamePlayManager : MonoBehaviour
         }
 
         if (useTime && numDeliveredOrders >= numTotalOrders)
+        {
+            gameCompleted();
+            return;
+        }
+
+        // Defensive fallback: late shifts normally end when their timer expires.
+        if (!useTime && timer == null && numDeliveredOrders >= numTotalOrders)
         {
             gameCompleted();
             return;
@@ -374,7 +389,7 @@ public class GamePlayManager : MonoBehaviour
         data.money += payout;
         data.totalTips += order.tip;
         data.reputation += Mathf.Max(1, order.reputationReward);
-        data.completedDeliveries += 1;
+        data.completedDeliveries++;
 
         Debug.Log(
             "EL MANDOOB DELIVERY: +" + payout + " EGP | Balance: " + data.money +
@@ -383,9 +398,9 @@ public class GamePlayManager : MonoBehaviour
 
     private IEnumerator GenerateOrder()
     {
-        while (true)
+        while (!shiftResolved)
         {
-            if (!inProcess && !shiftResolved && shop != null && buildings != null && buildings.Length > 1)
+            if (!inProcess && shop != null && buildings != null && buildings.Length > 1)
             {
                 inProcess = true;
                 currentOrder = ElMandoobContent.CreateOrder(data, level);
@@ -490,7 +505,7 @@ public class GamePlayManager : MonoBehaviour
         shiftResolved = true;
         int starsEarned = calculateScore();
 
-        data.completedShifts += 1;
+        data.completedShifts++;
         data.levelUnlocked = Mathf.Max(data.levelUnlocked, Mathf.Min(8, level + 1));
         if (data.stars != null && level >= 1 && level <= data.stars.Length)
         {
@@ -541,6 +556,15 @@ public class GamePlayManager : MonoBehaviour
             deliverButton.gameObject.SetActive(false);
         }
 
+        if (pointer != null)
+        {
+            pointer.SetActive(false);
+        }
+        if (questPointer != null)
+        {
+            questPointer.Target = null;
+        }
+
         if (hud != null)
         {
             hud.HideForResult();
@@ -554,25 +578,21 @@ public class GamePlayManager : MonoBehaviour
             return 0;
         }
 
+        if (numDeliveredOrders < numTotalOrders)
+        {
+            return 0;
+        }
+
         if (useTime)
         {
-            if (numDeliveredOrders < numTotalOrders)
-            {
-                return 0;
-            }
-
-            remainingTime = timer != null
+            float remainingTime = timer != null
                 ? timer.secondsLeft + timer.minutesLeft * 60
                 : 0f;
 
             return 1 + (int)Mathf.Min(remainingTime / 15f, 2f);
         }
 
-        if (numDeliveredOrders < numTotalOrders)
-        {
-            return 0;
-        }
-
-        return 1 + (int)Mathf.Min(2, numDeliveredOrders / 2);
+        int extraDeliveries = Mathf.Max(0, numDeliveredOrders - numTotalOrders);
+        return 1 + Mathf.Min(2, extraDeliveries / 2);
     }
 }
