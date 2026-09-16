@@ -12,6 +12,7 @@ public class ElMandoobHUD : MonoBehaviour
 {
     private TextMeshProUGUI statsText;
     private TextMeshProUGUI chapterText;
+    private TextMeshProUGUI progressText;
     private TextMeshProUGUI orderText;
     private TextMeshProUGUI notificationText;
     private GameObject topPanel;
@@ -44,14 +45,14 @@ public class ElMandoobHUD : MonoBehaviour
 
         topPanel = CreatePanel(
             "TopPanel",
-            new Vector2(0.57f, 0.79f),
+            new Vector2(0.55f, 0.72f),
             new Vector2(0.985f, 0.985f),
-            new Color(0.04f, 0.04f, 0.05f, 0.82f));
+            new Color(0.04f, 0.04f, 0.05f, 0.84f));
 
         chapterText = CreateText(
             topPanel.transform,
             "Chapter",
-            new Vector2(0.04f, 0.76f),
+            new Vector2(0.04f, 0.80f),
             new Vector2(0.96f, 0.96f),
             25f,
             TextAlignmentOptions.Right);
@@ -59,17 +60,25 @@ public class ElMandoobHUD : MonoBehaviour
         statsText = CreateText(
             topPanel.transform,
             "Stats",
-            new Vector2(0.04f, 0.57f),
-            new Vector2(0.96f, 0.76f),
-            23f,
+            new Vector2(0.04f, 0.66f),
+            new Vector2(0.96f, 0.80f),
+            22f,
+            TextAlignmentOptions.Right);
+
+        progressText = CreateText(
+            topPanel.transform,
+            "ShiftProgress",
+            new Vector2(0.04f, 0.51f),
+            new Vector2(0.96f, 0.66f),
+            21f,
             TextAlignmentOptions.Right);
 
         orderText = CreateText(
             topPanel.transform,
             "CurrentOrder",
-            new Vector2(0.04f, 0.05f),
-            new Vector2(0.96f, 0.55f),
-            25f,
+            new Vector2(0.04f, 0.04f),
+            new Vector2(0.96f, 0.50f),
+            24f,
             TextAlignmentOptions.TopRight);
         orderText.enableWordWrapping = true;
 
@@ -90,6 +99,7 @@ public class ElMandoobHUD : MonoBehaviour
         notificationPanel.SetActive(false);
 
         RefreshStats(data);
+        SetShiftProgress(0, 1, false);
         SetWaitingForOrder();
     }
 
@@ -109,6 +119,33 @@ public class ElMandoobHUD : MonoBehaviour
             statsText,
             "الرصيد: " + data.money + " جنيه   |   السمعة: " + data.reputation +
             "   |   التوصيلات: " + data.completedDeliveries);
+    }
+
+    public void SetShiftProgress(int delivered, int required, bool bonusMode)
+    {
+        if (progressText == null)
+        {
+            return;
+        }
+
+        delivered = Mathf.Max(0, delivered);
+        required = Mathf.Max(1, required);
+
+        string message;
+        if (!bonusMode || delivered < required)
+        {
+            message = "تقدم الشيفت: " + delivered + " / " + required;
+        }
+        else
+        {
+            int extras = delivered - required;
+            int nextStarIn = extras >= 4 ? 0 : 2 - (extras % 2);
+            message = extras >= 4
+                ? "المطلوب خلص - وصلت لأقصى تقييم"
+                : "المطلوب خلص - " + nextStarIn + " توصيلات زيادة للنجمة اللي بعدها";
+        }
+
+        ElMandoobBootstrap.ApplyArabicText(progressText, message);
     }
 
     public void SetWaitingForOrder()
@@ -172,8 +209,6 @@ public class ElMandoobHUD : MonoBehaviour
             topPanel.SetActive(!paused);
         }
 
-        // Notifications are deliberately hidden while paused. If a timed notification
-        // finishes in the background, resuming simply returns to the current order card.
         if (notificationPanel != null)
         {
             notificationPanel.SetActive(false);
@@ -190,14 +225,8 @@ public class ElMandoobHUD : MonoBehaviour
             notificationRoutine = null;
         }
 
-        if (topPanel != null)
-        {
-            topPanel.SetActive(false);
-        }
-        if (notificationPanel != null)
-        {
-            notificationPanel.SetActive(false);
-        }
+        if (topPanel != null) topPanel.SetActive(false);
+        if (notificationPanel != null) notificationPanel.SetActive(false);
     }
 
     public void ShowStoryFinished()
@@ -261,7 +290,7 @@ public class ElMandoobHUD : MonoBehaviour
         text.color = Color.white;
         text.raycastTarget = false;
         text.enableAutoSizing = true;
-        text.fontSizeMin = Mathf.Max(16f, fontSize - 8f);
+        text.fontSizeMin = Mathf.Max(15f, fontSize - 8f);
         text.fontSizeMax = fontSize;
 
         return text;
