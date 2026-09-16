@@ -255,10 +255,13 @@ public class GamePlayManager : MonoBehaviour
 
     private void ChangeTarget(GameObject building)
     {
-        if (questPointer != null)
+        if (questPointer == null)
         {
-            questPointer.Target = building;
+            return;
         }
+
+        questPointer.Target = building;
+        questPointer.gameObject.SetActive(building != null);
     }
 
     public void receiveButtonClick()
@@ -518,9 +521,10 @@ public class GamePlayManager : MonoBehaviour
         if (scoreDisplay != null)
         {
             tmp = scoreDisplay.GetComponent<TextMeshProUGUI>();
+            string resultPrefix = level >= 8 ? "خلصت آخر شيفت! " : string.Empty;
             ElMandoobBootstrap.ApplyArabicText(
                 tmp,
-                "كسبت " + currentShiftEarnings + " جنيه" +
+                resultPrefix + "كسبت " + currentShiftEarnings + " جنيه" +
                 (currentShiftTips > 0 ? " منهم " + currentShiftTips + " بقشيش" : "") +
                 " | التقييم " + starsEarned + "/3");
         }
@@ -544,6 +548,7 @@ public class GamePlayManager : MonoBehaviour
 
         if (player != null)
         {
+            player.HideInteractionButtons();
             player.enabled = false;
         }
 
@@ -560,10 +565,7 @@ public class GamePlayManager : MonoBehaviour
         {
             pointer.SetActive(false);
         }
-        if (questPointer != null)
-        {
-            questPointer.Target = null;
-        }
+        ChangeTarget(null);
 
         if (hud != null)
         {
