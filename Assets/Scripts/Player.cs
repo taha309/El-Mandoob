@@ -26,6 +26,7 @@ public class Player : MonoBehaviour
     private Vector2 movement;
     private Shop nearbyShop;
     private House nearbyHouse;
+    private bool currentDeliveryHadHit;
 
     void Start()
     {
@@ -40,6 +41,7 @@ public class Player : MonoBehaviour
         }
 
         initialPosition = transform.position;
+        currentDeliveryHadHit = false;
         RefreshInvulnerability();
     }
 
@@ -82,6 +84,11 @@ public class Player : MonoBehaviour
         if (!collision.CompareTag("Vehicles") || !canBeHit)
         {
             return;
+        }
+
+        if (carryingOrder)
+        {
+            currentDeliveryHadHit = true;
         }
 
         currentLives = Mathf.Max(0, currentLives - 1);
@@ -177,6 +184,18 @@ public class Player : MonoBehaviour
     {
         if (receiveButton != null) receiveButton.gameObject.SetActive(false);
         if (deliverButton != null) deliverButton.gameObject.SetActive(false);
+    }
+
+    public void BeginDelivery()
+    {
+        currentDeliveryHadHit = false;
+    }
+
+    public bool CompleteDeliveryWasSafe()
+    {
+        bool wasSafe = !currentDeliveryHadHit;
+        currentDeliveryHadHit = false;
+        return wasSafe;
     }
 
     public void SetShieldActive(bool active)
