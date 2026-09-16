@@ -24,6 +24,7 @@ public class ContBtnHandler : MonoBehaviour
         if (player != null)
         {
             player.enabled = true;
+            player.RefreshInteractionButtons();
         }
 
         ElMandoobHUD hud = FindObjectOfType<ElMandoobHUD>();
