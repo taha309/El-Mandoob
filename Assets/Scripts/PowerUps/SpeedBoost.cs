@@ -26,8 +26,14 @@ public class SpeedBoost : MonoBehaviour
 
     private IEnumerator PickUp(Player player)
     {
-        float originalSpeed = player.moveSpeed;
-        player.moveSpeed = originalSpeed * Mathf.Max(1f, multiplier);
+        float safeMultiplier = Mathf.Max(1f, multiplier);
+        player.AddSpeedBoost(safeMultiplier);
+
+        ElMandoobHUD hud = FindObjectOfType<ElMandoobHUD>();
+        if (hud != null)
+        {
+            hud.ShowMessage("دفعة سرعة! استغلها قبل ما تخلص.", 2.5f);
+        }
 
         SpriteRenderer renderer = GetComponent<SpriteRenderer>();
         if (renderer != null) renderer.enabled = false;
@@ -39,7 +45,7 @@ public class SpeedBoost : MonoBehaviour
 
         if (player != null)
         {
-            player.moveSpeed = originalSpeed;
+            player.RemoveSpeedBoost(safeMultiplier);
         }
 
         Destroy(gameObject);
