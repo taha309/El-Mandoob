@@ -1,27 +1,46 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class SpeedBoost : MonoBehaviour
 {
-    [SerializeField]
-    private float multiplier = 2f;
-    private float duration = 5f;
-    void OnTriggerEnter2D(Collider2D collider){
-        if (collider.CompareTag("Player")){
-            StartCoroutine(PickUp(collider));
+    [SerializeField] private float multiplier = 2f;
+    [SerializeField] private float duration = 5f;
+    private bool collected;
+
+    void OnTriggerEnter2D(Collider2D collider)
+    {
+        if (collected || !collider.CompareTag("Player"))
+        {
+            return;
         }
+
+        Player player = collider.GetComponent<Player>();
+        if (player == null)
+        {
+            return;
+        }
+
+        collected = true;
+        StartCoroutine(PickUp(player));
     }
 
-    IEnumerator PickUp(Collider2D player){
-        player.GetComponent<Player>().moveSpeed *= multiplier;
+    private IEnumerator PickUp(Player player)
+    {
+        float originalSpeed = player.moveSpeed;
+        player.moveSpeed = originalSpeed * Mathf.Max(1f, multiplier);
 
-        GetComponent<SpriteRenderer>().enabled = false;
-        GetComponent<BoxCollider2D>().enabled = false;
+        SpriteRenderer renderer = GetComponent<SpriteRenderer>();
+        if (renderer != null) renderer.enabled = false;
 
-        yield return new WaitForSeconds(duration);
+        Collider2D pickupCollider = GetComponent<Collider2D>();
+        if (pickupCollider != null) pickupCollider.enabled = false;
 
-        player.GetComponent<Player>().moveSpeed /= multiplier;
+        yield return new WaitForSeconds(Mathf.Max(0.1f, duration));
+
+        if (player != null)
+        {
+            player.moveSpeed = originalSpeed;
+        }
 
         Destroy(gameObject);
     }
