@@ -191,8 +191,10 @@ public class ElMandoobMenuPanel : MonoBehaviour
             : "طوّر التحمل لـ " + (data.healths + 1) + " - " + enduranceCost + " جنيه";
         ElMandoobBootstrap.ApplyArabicText(enduranceButtonText, enduranceLabel);
 
-        speedButton.interactable = data.speed < 8 && data.money >= speedCost;
-        enduranceButton.interactable = data.healths < 3 && data.money >= enduranceCost;
+        // Keep buttons clickable while an upgrade is still available so a player
+        // without enough money gets a useful "you need X more" message.
+        speedButton.interactable = data.speed < 8;
+        enduranceButton.interactable = data.healths < 3;
 
         ApplyShiftLocks();
     }
@@ -290,6 +292,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
         image.color = new Color(0.16f, 0.33f, 0.25f, 0.96f);
 
         Button button = buttonObject.GetComponent<Button>();
+        button.targetGraphic = image;
         ColorBlock colors = button.colors;
         colors.highlightedColor = new Color(0.21f, 0.43f, 0.32f, 1f);
         colors.pressedColor = new Color(0.11f, 0.24f, 0.18f, 1f);
