@@ -99,13 +99,16 @@ public static class SaveSystem
             }
         }
 
+        data.healths = Mathf.Clamp(data.healths <= 0 ? 1 : data.healths, 1, 3);
+        data.speed = Mathf.Clamp(data.speed <= 0 ? 5 : data.speed, 5, 8);
+        data.audios = data.audios == 0 ? 0 : 1;
         data.money = Mathf.Max(0, data.money);
         data.reputation = Mathf.Max(0, data.reputation);
         data.completedDeliveries = Mathf.Max(0, data.completedDeliveries);
         data.completedShifts = Mathf.Max(0, data.completedShifts);
         data.totalTips = Mathf.Max(0, data.totalTips);
         data.storyStage = Mathf.Clamp(data.storyStage, 0, 6);
-        data.levelUnlocked = Mathf.Max(1, data.levelUnlocked);
+        data.levelUnlocked = Mathf.Clamp(data.levelUnlocked <= 0 ? 1 : data.levelUnlocked, 1, 8);
     }
 
     private static string GetPath()
