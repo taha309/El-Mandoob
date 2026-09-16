@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class VerticalVehicle : MonoBehaviour
@@ -11,79 +9,80 @@ public class VerticalVehicle : MonoBehaviour
 
     private Rigidbody2D myBody;
     private Vector2 frontPosition;
-    private float timeOutStop = 2f;
-    private float currentStopTime = 0f;
-    private bool avoidCollision = true;
-    private bool flag = false;
-    // Start is called before the first frame update
+
+    private const float StopTimeout = 2f;
+    private const float IgnoreDuration = 0.75f;
+    private float currentStopTime;
+    private float ignoreTimer;
+
     void Awake()
     {
         myBody = GetComponent<Rigidbody2D>();
     }
 
-    // Update is called once per frame
     void Update()
     {
-        myBody.velocity = new Vector2(myBody.velocity.x, speed);
-        frontPosition = transform.position;
-        flag = false;
-        if (direction == "top"){
-            frontPosition.y -= 1.5f;
-            for (int i=2; i<4; i++){
-                frontPosition.y -= 1f;
-                if (isObjectHere(frontPosition) && avoidCollision){
-                    flag = true;
-                    break;
-                }
-            }
-            if (flag){
-                myBody.velocity = new Vector2(myBody.velocity.x, 0);
-                currentStopTime += Time.deltaTime/2;
-                if (currentStopTime >= timeOutStop){
-                    avoidCollision = false;
-                    currentStopTime = 0;
-                }
-            }
-            else{
-                currentStopTime = 0;
-            }
+        if (myBody == null)
+        {
+            return;
         }
-        else if (direction == "bottom"){
-            frontPosition.y += 1.5f;
-            for (int i=2; i<4; i++){
-                frontPosition.y += 1f;
-                if (isObjectHere(frontPosition) && avoidCollision){
-                    flag = true;
-                    break;
-                }
-            }
-            if (flag){
-                myBody.velocity = new Vector2(myBody.velocity.x, 0);
-                currentStopTime += Time.deltaTime/2;
-                if (currentStopTime >= timeOutStop){
-                    avoidCollision = false;
-                    currentStopTime = 0;
-                }
-            }
-            else{
-                currentStopTime = 0;
-            }
+
+        if (ignoreTimer > 0f)
+        {
+            ignoreTimer -= Time.deltaTime;
+        }
+
+        float signedSpeed = direction == "bottom" ? Mathf.Abs(speed) : -Mathf.Abs(speed);
+        myBody.velocity = new Vector2(myBody.velocity.x, signedSpeed);
+
+        if (ignoreTimer > 0f)
+        {
+            currentStopTime = 0f;
+            return;
+        }
+
+        bool blocked = HasVehicleAhead();
+        if (!blocked)
+        {
+            currentStopTime = 0f;
+            return;
+        }
+
+        myBody.velocity = new Vector2(myBody.velocity.x, 0f);
+        currentStopTime += Time.deltaTime;
+
+        // At intersections two vehicles can otherwise stare at each other forever.
+        // Briefly yield the collision check, then automatically restore it.
+        if (currentStopTime >= StopTimeout)
+        {
+            currentStopTime = 0f;
+            ignoreTimer = IgnoreDuration;
         }
     }
 
-    bool isObjectHere(Vector2 position)
+    private bool HasVehicleAhead()
     {
-        Collider2D intersecting = Physics2D.OverlapCircle(position, 0.01f);
-        if (intersecting == null)
+        frontPosition = transform.position;
+        float directionSign = direction == "bottom" ? 1f : -1f;
+        frontPosition.y += 1.5f * directionSign;
+
+        for (int i = 0; i < 2; i++)
         {
-            return false;
+            frontPosition.y += directionSign;
+            if (IsVehicleHere(frontPosition))
+            {
+                return true;
+            }
         }
-        else if (intersecting.CompareTag("Vehicles"))
-        {
-            return true;
-        }
-        else{
-            return false;
-        }
+
+        return false;
+    }
+
+    private bool IsVehicleHere(Vector2 position)
+    {
+        Collider2D intersecting = Physics2D.OverlapCircle(position, 0.08f);
+        return intersecting != null &&
+               intersecting.gameObject != gameObject &&
+               intersecting.CompareTag("Vehicles");
     }
 }
