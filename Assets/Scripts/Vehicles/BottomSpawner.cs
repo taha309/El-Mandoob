@@ -1,42 +1,66 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class BottomSpawner : VehicleSpawner
 {
-    [SerializeField]
-    private GameObject[] vehiclesReference;
+    [SerializeField] private GameObject[] vehiclesReference;
+    [SerializeField] private Transform pos;
 
-    [SerializeField]
-    private Transform pos;
-
-    private GameObject spawnedVehicles;
-    private int randomIndex;
-
-    // Start is called before the first frame update
     void Start()
     {
+        if (pos == null || vehiclesReference == null || vehiclesReference.Length == 0)
+        {
+            Debug.LogWarning("El Mandoob: BottomSpawner is missing traffic references.", this);
+            enabled = false;
+            return;
+        }
+
         StartCoroutine(SpawnVehicles());
     }
 
-    IEnumerator SpawnVehicles(){
-        while (true){
+    private IEnumerator SpawnVehicles()
+    {
+        while (enabled)
+        {
+            yield return new WaitForSeconds(Random.Range(7f, 10f));
 
-            yield return new WaitForSeconds(Random.Range(7, 10));
+            int batchSize = Mathf.Clamp(carsPerSpawn, 1, 3);
+            for (int i = 0; i < batchSize; i++)
+            {
+                GameObject prefab = PickVehicle();
+                if (prefab == null)
+                {
+                    continue;
+                }
 
-            for (int i=0; i<carsPerSpawn; i++){
-                randomIndex = Random.Range(0, vehiclesReference.Length);
+                GameObject spawnedVehicle = Instantiate(prefab, pos.position, Quaternion.identity);
+                VerticalVehicle vehicle = spawnedVehicle.GetComponent<VerticalVehicle>();
+                if (vehicle == null)
+                {
+                    Debug.LogWarning("El Mandoob: bottom traffic prefab has no VerticalVehicle component.", spawnedVehicle);
+                    Destroy(spawnedVehicle);
+                    continue;
+                }
 
-                spawnedVehicles = Instantiate(vehiclesReference[randomIndex]);
-
-                spawnedVehicles.transform.position = pos.position;
-                spawnedVehicles.GetComponent<VerticalVehicle>().speed = carSpeed;
-                spawnedVehicles.GetComponent<VerticalVehicle>().direction = "bottom";
-                spawnedVehicles.transform.localScale = new Vector3(1f, -1f, 1f);
+                vehicle.direction = "bottom";
+                vehicle.speed = Mathf.Abs(carSpeed);
+                spawnedVehicle.transform.localScale = new Vector3(1f, -1f, 1f);
 
                 yield return new WaitForSeconds(2f);
             }
+        }
+    }
 
-        } 
+    private GameObject PickVehicle()
+    {
+        for (int attempt = 0; attempt < vehiclesReference.Length; attempt++)
+        {
+            GameObject candidate = vehiclesReference[Random.Range(0, vehiclesReference.Length)];
+            if (candidate != null)
+            {
+                return candidate;
+            }
+        }
+        return null;
     }
 }
