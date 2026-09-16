@@ -437,7 +437,7 @@ public class GamePlayManager : MonoBehaviour
     private IEnumerator ShowStoryFinishedAfterDelay()
     {
         yield return new WaitForSecondsRealtime(5f);
-        if (hud != null)
+        if (hud != null && !shiftResolved)
         {
             hud.ShowStoryFinished();
         }
@@ -468,6 +468,8 @@ public class GamePlayManager : MonoBehaviour
         }
 
         shiftResolved = true;
+        StopGameplayForResult();
+
         if (itemDeliveredCanvas != null)
         {
             itemDeliveredCanvas.SetActive(false);
@@ -496,6 +498,8 @@ public class GamePlayManager : MonoBehaviour
         }
         SaveSystem.Save(data);
 
+        StopGameplayForResult();
+
         if (scoreDisplay != null)
         {
             tmp = scoreDisplay.GetComponent<TextMeshProUGUI>();
@@ -514,10 +518,32 @@ public class GamePlayManager : MonoBehaviour
         {
             gameCompletedSceen.SetActive(true);
         }
+    }
+
+    private void StopGameplayForResult()
+    {
+        if (timer != null)
+        {
+            timer.counting = false;
+        }
+
+        if (player != null)
+        {
+            player.enabled = false;
+        }
+
+        if (recieveButton != null)
+        {
+            recieveButton.gameObject.SetActive(false);
+        }
+        if (deliverButton != null)
+        {
+            deliverButton.gameObject.SetActive(false);
+        }
 
         if (hud != null)
         {
-            hud.RefreshStats(data);
+            hud.HideForResult();
         }
     }
 
