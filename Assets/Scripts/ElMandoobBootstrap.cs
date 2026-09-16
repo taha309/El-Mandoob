@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -8,10 +9,8 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Egyptian Arabic UI support for El Mandoob.
-///
-/// The original project stores most labels directly inside Unity scenes and prefabs.
-/// Rather than rewriting large YAML scene files, this bootstrap translates known legacy
-/// labels when scenes load. New gameplay text should call ElMandoobArabic.Shape directly.
+/// The source project stores many labels directly in scenes/prefabs, so known legacy
+/// labels are translated at runtime while all new El Mandoob systems use ApplyArabicText.
 /// </summary>
 public static class ElMandoobArabic
 {
@@ -30,27 +29,33 @@ public static class ElMandoobArabic
             { "Continue", "كمّل" },
             { "Resume", "كمّل" },
             { "Restart", "ابدأ من جديد" },
+            { "Retry", "حاول تاني" },
             { "Main Menu", "القائمة الرئيسية" },
             { "Levels", "الشيفتات" },
+            { "Level", "الشيفت" },
             { "Level Select", "اختار الشيفت" },
+            { "Select Level", "اختار الشيفت" },
             { "Deliver", "سلّم الطلب" },
             { "Receive", "استلم الطلب" },
             { "Next level", "الشيفت اللي بعده" },
             { "TASK FAILED", "الشيفت فشل" },
+            { "TASK COMPLETED", "الشيفت خلص" },
+            { "Task completed", "الشيفت خلص" },
             { "PAUSED", "واقف مؤقتًا" },
             { "Pause", "إيقاف مؤقت" },
             { "Audio", "الصوت" },
             { "Music", "الموسيقى" },
             { "Volume", "مستوى الصوت" },
+            { "Sound", "الصوت" },
             { "Task", "المطلوب" },
-            { "Completed", "تم" }
+            { "Completed", "تم" },
+            { "Confirm", "تأكيد" },
+            { "Cancel", "إلغاء" },
+            { "Close", "اقفل" },
+            { "Game Over", "الشيفت خلص" },
+            { "New Text", "" }
         };
 
-    /// <summary>
-    /// Shapes Arabic text for normal TextMeshPro components.
-    /// RTLTMPro handles Arabic letter joining and text direction; we keep western digits
-    /// for timers and gameplay values so strings such as 01:30 remain unambiguous.
-    /// </summary>
     public static string Shape(string arabicText)
     {
         if (string.IsNullOrEmpty(arabicText))
@@ -99,9 +104,7 @@ public static class ElMandoobArabic
 }
 
 /// <summary>
-/// Installs the El Mandoob Arabic presentation layer automatically.
-/// No scene reference is required, which keeps the original scenes intact while the
-/// project is being converted milestone by milestone.
+/// Installs El Mandoob Arabic presentation automatically without scene references.
 /// </summary>
 public class ElMandoobBootstrap : MonoBehaviour
 {
@@ -113,6 +116,7 @@ public class ElMandoobBootstrap : MonoBehaviour
     {
         "Noto Sans Arabic",
         "Noto Naskh Arabic",
+        "Segoe UI",
         "Tahoma",
         "Arial"
     };
@@ -134,6 +138,7 @@ public class ElMandoobBootstrap : MonoBehaviour
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
+        StartCoroutine(RefreshVisibleLegacyText());
     }
 
     private void OnDisable()
@@ -146,9 +151,18 @@ public class ElMandoobBootstrap : MonoBehaviour
         ApplyArabicToLoadedScene(scene);
     }
 
+    private IEnumerator RefreshVisibleLegacyText()
+    {
+        WaitForSecondsRealtime delay = new WaitForSecondsRealtime(0.75f);
+        while (true)
+        {
+            ApplyArabicToLoadedScene(SceneManager.GetActiveScene());
+            yield return delay;
+        }
+    }
+
     private void ApplyArabicToLoadedScene(Scene scene)
     {
-        TMP_FontAsset arabicFont = GetRuntimeArabicFont();
         TMP_Text[] textObjects = Resources.FindObjectsOfTypeAll<TMP_Text>();
 
         foreach (TMP_Text textObject in textObjects)
@@ -164,18 +178,34 @@ public class ElMandoobBootstrap : MonoBehaviour
                 continue;
             }
 
-            if (arabicFont != null)
-            {
-                textObject.font = arabicFont;
-            }
-
-            // Text has already been shaped by RTLTMPro, so do not reverse it again.
-            textObject.isRightToLeftText = false;
-            textObject.text = translated;
+            ApplyPreparedArabicText(textObject, translated);
         }
     }
 
-    private static TMP_FontAsset GetRuntimeArabicFont()
+    public static void ApplyArabicText(TMP_Text textObject, string arabicText)
+    {
+        if (textObject == null)
+        {
+            return;
+        }
+
+        ApplyPreparedArabicText(textObject, ElMandoobArabic.Shape(arabicText));
+    }
+
+    private static void ApplyPreparedArabicText(TMP_Text textObject, string shapedText)
+    {
+        TMP_FontAsset arabicFont = GetRuntimeArabicFont();
+        if (arabicFont != null)
+        {
+            textObject.font = arabicFont;
+        }
+
+        // RTLSupport already shapes and reorders the string.
+        textObject.isRightToLeftText = false;
+        textObject.text = shapedText;
+    }
+
+    public static TMP_FontAsset GetRuntimeArabicFont()
     {
         if (runtimeArabicFont != null)
         {
@@ -193,8 +223,7 @@ public class ElMandoobBootstrap : MonoBehaviour
             {
                 Debug.LogWarning(
                     "El Mandoob: no preferred Arabic system font was found. " +
-                    "Arabic text shaping is active, but a bundled Arabic TMP font asset " +
-                    "must be added before release.");
+                    "Arabic shaping is active, but a bundled Arabic TMP font must be added before release.");
                 warnedAboutFont = true;
             }
 
