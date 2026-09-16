@@ -4,11 +4,13 @@ using TMPro;
 using RTLTMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 /// <summary>
 /// Egyptian Arabic UI support for El Mandoob.
-/// The source project stores many labels directly in scenes/prefabs, so known legacy
-/// labels are translated when a scene loads while all new systems use ApplyArabicText.
+/// The upstream project uses TMP font assets that do not contain Arabic glyphs.
+/// Arabic labels are therefore shaped with RTLTMPro and rendered through a
+/// dynamic Windows UI font overlay while the original TMP label stays hidden.
 /// </summary>
 public static class ElMandoobArabic
 {
@@ -108,19 +110,14 @@ public static class ElMandoobArabic
     }
 }
 
-/// <summary>
-/// Installs El Mandoob Arabic presentation automatically without scene references.
-/// </summary>
 public class ElMandoobBootstrap : MonoBehaviour
 {
+    private const string OverlayName = "ElMandoobArabicOverlay";
+
     private static ElMandoobBootstrap instance;
-    private static TMP_FontAsset runtimeArabicFont;
+    private static Font runtimeArabicFont;
     private static bool warnedAboutFont;
 
-    // Windows normally includes Tahoma and Arial with Arabic glyph coverage.
-    // Try these directly in a deterministic order. Unity 2021's legacy Font.HasCharacter
-    // can incorrectly report false for Arabic presentation forms, so candidates are no
-    // longer rejected through that API before TextMeshPro gets a chance to build them.
     private static readonly string[] PreferredArabicFonts =
     {
         "Tahoma",
@@ -130,8 +127,7 @@ public class ElMandoobBootstrap : MonoBehaviour
         "Simplified Arabic",
         "Arabic Typesetting",
         "Noto Sans Arabic",
-        "Noto Naskh Arabic",
-        "Arial Unicode MS"
+        "Noto Naskh Arabic"
     };
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -196,19 +192,105 @@ public class ElMandoobBootstrap : MonoBehaviour
 
     private static void ApplyPreparedArabicText(TMP_Text textObject, string shapedText)
     {
-        TMP_FontAsset arabicFont = GetRuntimeArabicFont();
-        if (arabicFont != null)
+        if (textObject == null)
         {
-            textObject.font = arabicFont;
-            textObject.fontSharedMaterial = arabicFont.material;
+            return;
         }
 
-        // RTLSupport already shapes and reorders the string.
-        textObject.isRightToLeftText = false;
-        textObject.text = shapedText;
+        Font font = GetRuntimeArabicFont();
+        if (font == null)
+        {
+            // Keep the original TMP object as a last-resort fallback.
+            textObject.text = shapedText;
+            return;
+        }
+
+        UnityEngine.UI.Text overlay = GetOrCreateOverlay(textObject, font);
+        if (overlay == null)
+        {
+            textObject.text = shapedText;
+            return;
+        }
+
+        Color sourceColor = textObject.color;
+        overlay.color = new Color(sourceColor.r, sourceColor.g, sourceColor.b, Mathf.Max(0.01f, sourceColor.a));
+        overlay.text = shapedText;
+        overlay.font = font;
+        overlay.fontSize = Mathf.Clamp(Mathf.RoundToInt(textObject.fontSize), 10, 96);
+        overlay.fontStyle = FontStyle.Normal;
+        overlay.alignment = ConvertAlignment(textObject.alignment);
+        overlay.horizontalOverflow = HorizontalWrapMode.Wrap;
+        overlay.verticalOverflow = VerticalWrapMode.Truncate;
+        overlay.resizeTextForBestFit = textObject.enableAutoSizing;
+        overlay.resizeTextMinSize = Mathf.Clamp(Mathf.RoundToInt(textObject.fontSizeMin), 8, 72);
+        overlay.resizeTextMaxSize = Mathf.Clamp(Mathf.RoundToInt(textObject.fontSizeMax), overlay.resizeTextMinSize, 120);
+        overlay.raycastTarget = false;
+
+        // Hide only the TMP glyphs. The child UI.Text does not inherit TMP vertex alpha.
+        textObject.text = string.Empty;
     }
 
-    public static TMP_FontAsset GetRuntimeArabicFont()
+    private static UnityEngine.UI.Text GetOrCreateOverlay(TMP_Text source, Font font)
+    {
+        Transform existing = source.transform.Find(OverlayName);
+        if (existing != null)
+        {
+            UnityEngine.UI.Text existingText = existing.GetComponent<UnityEngine.UI.Text>();
+            if (existingText != null)
+            {
+                return existingText;
+            }
+        }
+
+        GameObject overlayObject = new GameObject(
+            OverlayName,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(UnityEngine.UI.Text));
+        overlayObject.transform.SetParent(source.transform, false);
+
+        RectTransform rect = overlayObject.GetComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        rect.localScale = Vector3.one;
+
+        UnityEngine.UI.Text overlay = overlayObject.GetComponent<UnityEngine.UI.Text>();
+        overlay.font = font;
+        overlay.supportRichText = false;
+        overlay.raycastTarget = false;
+        return overlay;
+    }
+
+    private static TextAnchor ConvertAlignment(TextAlignmentOptions alignment)
+    {
+        string value = alignment.ToString();
+        bool top = value.IndexOf("Top", StringComparison.OrdinalIgnoreCase) >= 0;
+        bool bottom = value.IndexOf("Bottom", StringComparison.OrdinalIgnoreCase) >= 0;
+        bool left = value.IndexOf("Left", StringComparison.OrdinalIgnoreCase) >= 0;
+        bool right = value.IndexOf("Right", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        if (top)
+        {
+            if (left) return TextAnchor.UpperLeft;
+            if (right) return TextAnchor.UpperRight;
+            return TextAnchor.UpperCenter;
+        }
+
+        if (bottom)
+        {
+            if (left) return TextAnchor.LowerLeft;
+            if (right) return TextAnchor.LowerRight;
+            return TextAnchor.LowerCenter;
+        }
+
+        if (left) return TextAnchor.MiddleLeft;
+        if (right) return TextAnchor.MiddleRight;
+        return TextAnchor.MiddleCenter;
+    }
+
+    public static Font GetRuntimeArabicFont()
     {
         if (runtimeArabicFont != null)
         {
@@ -217,72 +299,47 @@ public class ElMandoobBootstrap : MonoBehaviour
 
         foreach (string fontName in PreferredArabicFonts)
         {
-            TMP_FontAsset candidate = TryCreateArabicFont(fontName);
-            if (candidate != null)
+            try
             {
+                Font candidate = Font.CreateDynamicFontFromOSFont(fontName, 36);
+                if (candidate == null)
+                {
+                    continue;
+                }
+
                 runtimeArabicFont = candidate;
-                Debug.Log("EL MANDOOB ARABIC FONT ACTIVE: " + fontName);
+                runtimeArabicFont.name = "ElMandoob_Arabic_" + fontName.Replace(' ', '_');
+                Debug.Log("EL MANDOOB ARABIC UI FONT ACTIVE: " + fontName);
                 return runtimeArabicFont;
+            }
+            catch (Exception)
+            {
+                // Try the next Windows font family.
             }
         }
 
-        // Last chance: ask Unity to pick from the whole preferred family list itself.
         try
         {
-            Font sourceFont = Font.CreateDynamicFontFromOSFont(PreferredArabicFonts, 36);
-            TMP_FontAsset fallback = CreateTmpFontAsset(sourceFont, "SystemFallback");
+            Font fallback = Font.CreateDynamicFontFromOSFont(PreferredArabicFonts, 36);
             if (fallback != null)
             {
                 runtimeArabicFont = fallback;
-                Debug.Log("EL MANDOOB ARABIC FONT ACTIVE: system fallback");
+                Debug.Log("EL MANDOOB ARABIC UI FONT ACTIVE: system fallback");
                 return runtimeArabicFont;
             }
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            Debug.LogWarning("El Mandoob: system Arabic font fallback failed. " + exception.Message);
+            // Report one useful warning below rather than one warning per candidate.
         }
 
         if (!warnedAboutFont)
         {
             Debug.LogWarning(
-                "El Mandoob: could not create an Arabic-capable runtime TMP font. " +
-                "Arabic text will require a bundled TMP font asset before release.");
+                "El Mandoob: no Arabic-capable Windows font could be created at runtime.");
             warnedAboutFont = true;
         }
 
         return null;
-    }
-
-    private static TMP_FontAsset TryCreateArabicFont(string fontName)
-    {
-        try
-        {
-            Font sourceFont = Font.CreateDynamicFontFromOSFont(fontName, 36);
-            return CreateTmpFontAsset(sourceFont, fontName.Replace(' ', '_'));
-        }
-        catch (Exception exception)
-        {
-            Debug.LogWarning("El Mandoob: Arabic font candidate failed (" + fontName + "). " + exception.Message);
-            return null;
-        }
-    }
-
-    private static TMP_FontAsset CreateTmpFontAsset(Font sourceFont, string label)
-    {
-        if (sourceFont == null)
-        {
-            return null;
-        }
-
-        TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(sourceFont);
-        if (fontAsset == null)
-        {
-            return null;
-        }
-
-        fontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
-        fontAsset.name = "ElMandoob_RuntimeArabic_" + label;
-        return fontAsset;
     }
 }
