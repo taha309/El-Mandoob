@@ -16,11 +16,13 @@ public class ElMandoobHUD : MonoBehaviour
     private TextMeshProUGUI notificationText;
     private GameObject notificationPanel;
     private Coroutine notificationRoutine;
+    private int currentLevel;
 
-    public static ElMandoobHUD Create(GameData data)
+    public static ElMandoobHUD Create(GameData data, int level)
     {
         GameObject root = new GameObject("ElMandoobHUD", typeof(RectTransform));
         ElMandoobHUD hud = root.AddComponent<ElMandoobHUD>();
+        hud.currentLevel = Mathf.Clamp(level, 1, 8);
         hud.Build(data);
         return hud;
     }
@@ -98,7 +100,8 @@ public class ElMandoobHUD : MonoBehaviour
 
         ElMandoobBootstrap.ApplyArabicText(
             chapterText,
-            "الفصل: " + ElMandoobContent.GetStoryChapterName(data.storyStage));
+            "شيفت " + currentLevel + " - " + ElMandoobContent.GetShiftArea(currentLevel) +
+            " | " + ElMandoobContent.GetStoryChapterName(data.storyStage));
 
         ElMandoobBootstrap.ApplyArabicText(
             statsText,
