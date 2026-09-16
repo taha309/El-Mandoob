@@ -27,6 +27,10 @@ public class Player : MonoBehaviour
 
     void Start()
     {
+        GameData data = SaveSystem.Load();
+        moveSpeed = Mathf.Max(5f, data.speed);
+        maxLives = Mathf.Clamp(2 + data.healths, 3, 5);
+
         currentLives = maxLives;
         if (healthBar != null)
         {
