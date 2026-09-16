@@ -1,23 +1,34 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Adds a standalone El Mandoob upgrade button to the existing menu.
-/// The main menu stays clean; pressing "تطوير" opens a dedicated upgrade popup.
+/// Adds a standalone El Mandoob upgrade button to the original menu.
+/// The main menu stays clean; pressing "تطوير" opens a focused upgrade modal.
 /// </summary>
 public class ElMandoobMenuPanel : MonoBehaviour
 {
     private GameData data;
 
     private GameObject upgradeModal;
+    private RectTransform upgradeWindow;
+    private CanvasGroup upgradeCanvasGroup;
+
     private TextMeshProUGUI profileText;
+    private TextMeshProUGUI speedStatusText;
+    private TextMeshProUGUI enduranceStatusText;
     private TextMeshProUGUI messageText;
+
     private Button speedButton;
     private Button enduranceButton;
+    private Image speedButtonImage;
+    private Image enduranceButtonImage;
     private TextMeshProUGUI speedButtonText;
     private TextMeshProUGUI enduranceButtonText;
+
+    private Coroutine modalAnimation;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Install()
@@ -48,6 +59,14 @@ public class ElMandoobMenuPanel : MonoBehaviour
         root.AddComponent<ElMandoobMenuPanel>().Build();
     }
 
+    private void Update()
+    {
+        if (upgradeModal != null && upgradeModal.activeSelf && Input.GetKeyDown(KeyCode.Escape))
+        {
+            CloseUpgradePanel();
+        }
+    }
+
     private void Build()
     {
         Time.timeScale = 1f;
@@ -64,24 +83,33 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         gameObject.AddComponent<GraphicRaycaster>();
 
-        // One clean standalone button in the bottom-left of the main menu.
+        // One standalone button. Nothing else permanently occupies the left side.
         Button openUpgradeButton = CreateMenuButton(
             transform,
             "OpenUpgradeButton",
             new Vector2(0.025f, 0.045f),
-            new Vector2(0.20f, 0.13f),
+            new Vector2(0.20f, 0.135f),
             out TextMeshProUGUI openUpgradeText);
         openUpgradeButton.onClick.AddListener(OpenUpgradePanel);
         ElMandoobBootstrap.ApplyArabicText(openUpgradeText, "تطوير");
 
         BuildUpgradeModal();
         upgradeModal.SetActive(false);
+
+        // Shift locks belong to progression and should be applied even if the player
+        // never opens the upgrade screen.
+        RefreshData();
+        ApplyShiftLocks();
     }
 
     private void BuildUpgradeModal()
     {
-        // Full-screen raycast blocker so the original menu cannot be clicked through the popup.
-        upgradeModal = new GameObject("UpgradeModal", typeof(RectTransform), typeof(Image));
+        upgradeModal = new GameObject(
+            "UpgradeModal",
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(Button),
+            typeof(CanvasGroup));
         upgradeModal.transform.SetParent(transform, false);
 
         RectTransform modalRect = upgradeModal.GetComponent<RectTransform>();
@@ -91,76 +119,156 @@ public class ElMandoobMenuPanel : MonoBehaviour
         modalRect.offsetMax = Vector2.zero;
 
         Image backdrop = upgradeModal.GetComponent<Image>();
-        backdrop.color = new Color(0f, 0f, 0f, 0.58f);
+        backdrop.color = new Color(0f, 0f, 0f, 0.68f);
         backdrop.raycastTarget = true;
 
-        GameObject panel = CreatePanel(
+        Button backdropButton = upgradeModal.GetComponent<Button>();
+        backdropButton.transition = Selectable.Transition.None;
+        backdropButton.targetGraphic = backdrop;
+        backdropButton.onClick.AddListener(CloseUpgradePanel);
+
+        upgradeCanvasGroup = upgradeModal.GetComponent<CanvasGroup>();
+        upgradeCanvasGroup.alpha = 1f;
+
+        GameObject windowObject = CreatePanel(
             upgradeModal.transform,
             "UpgradeWindow",
-            new Vector2(0.30f, 0.18f),
-            new Vector2(0.70f, 0.82f),
-            new Color(0.035f, 0.055f, 0.045f, 0.98f));
+            new Vector2(0.29f, 0.14f),
+            new Vector2(0.71f, 0.86f),
+            new Color(0.035f, 0.052f, 0.043f, 0.995f));
 
-        // Unlike the backdrop, the window itself should also catch raycasts so clicks
-        // never reach the old menu behind it.
-        panel.GetComponent<Image>().raycastTarget = true;
+        Image windowImage = windowObject.GetComponent<Image>();
+        windowImage.raycastTarget = true;
+        upgradeWindow = windowObject.GetComponent<RectTransform>();
+
+        // Accent strip gives the modal a deliberate game-screen hierarchy without
+        // importing new art assets.
+        CreatePanel(
+            windowObject.transform,
+            "HeaderAccent",
+            new Vector2(0f, 0.965f),
+            new Vector2(1f, 1f),
+            new Color(0.95f, 0.58f, 0.18f, 1f));
 
         TextMeshProUGUI title = CreateText(
-            panel.transform,
+            windowObject.transform,
             "UpgradeTitle",
             new Vector2(0.07f, 0.84f),
-            new Vector2(0.93f, 0.96f),
-            38f,
+            new Vector2(0.93f, 0.95f),
+            40f,
             TextAlignmentOptions.Center);
         ElMandoobBootstrap.ApplyArabicText(title, "تطوير المندوب");
 
         TextMeshProUGUI hint = CreateText(
-            panel.transform,
+            windowObject.transform,
             "UpgradeHint",
-            new Vector2(0.08f, 0.75f),
+            new Vector2(0.08f, 0.76f),
             new Vector2(0.92f, 0.84f),
-            20f,
+            19f,
             TextAlignmentOptions.Center);
-        ElMandoobBootstrap.ApplyArabicText(hint, "استخدم فلوس التوصيلات عشان تطوّر نفسك للشيفتات الأصعب");
+        hint.color = new Color(0.82f, 0.86f, 0.82f, 1f);
+        ElMandoobBootstrap.ApplyArabicText(hint, "كل تطوير دائم وبيأثر على كل الشيفتات");
+
+        GameObject walletPanel = CreatePanel(
+            windowObject.transform,
+            "WalletPanel",
+            new Vector2(0.10f, 0.65f),
+            new Vector2(0.90f, 0.75f),
+            new Color(0.07f, 0.11f, 0.09f, 1f));
 
         profileText = CreateText(
-            panel.transform,
+            walletPanel.transform,
             "Profile",
-            new Vector2(0.10f, 0.63f),
-            new Vector2(0.90f, 0.74f),
-            22f,
+            new Vector2(0.04f, 0.08f),
+            new Vector2(0.96f, 0.92f),
+            23f,
             TextAlignmentOptions.Center);
 
+        // SPEED CARD
+        GameObject speedCard = CreatePanel(
+            windowObject.transform,
+            "SpeedCard",
+            new Vector2(0.08f, 0.42f),
+            new Vector2(0.92f, 0.62f),
+            new Color(0.055f, 0.09f, 0.075f, 1f));
+
+        TextMeshProUGUI speedTitle = CreateText(
+            speedCard.transform,
+            "SpeedTitle",
+            new Vector2(0.05f, 0.62f),
+            new Vector2(0.42f, 0.93f),
+            25f,
+            TextAlignmentOptions.Right);
+        ElMandoobBootstrap.ApplyArabicText(speedTitle, "السرعة");
+
+        speedStatusText = CreateText(
+            speedCard.transform,
+            "SpeedStatus",
+            new Vector2(0.05f, 0.15f),
+            new Vector2(0.54f, 0.61f),
+            18f,
+            TextAlignmentOptions.Right);
+
         speedButton = CreateUpgradeButton(
-            panel.transform,
+            speedCard.transform,
             "SpeedUpgrade",
-            new Vector2(0.10f, 0.43f),
-            new Vector2(0.90f, 0.59f),
-            out speedButtonText);
+            new Vector2(0.60f, 0.18f),
+            new Vector2(0.94f, 0.82f),
+            out speedButtonText,
+            out speedButtonImage);
         speedButton.onClick.AddListener(BuySpeedUpgrade);
 
+        // ENDURANCE CARD
+        GameObject enduranceCard = CreatePanel(
+            windowObject.transform,
+            "EnduranceCard",
+            new Vector2(0.08f, 0.20f),
+            new Vector2(0.92f, 0.40f),
+            new Color(0.055f, 0.09f, 0.075f, 1f));
+
+        TextMeshProUGUI enduranceTitle = CreateText(
+            enduranceCard.transform,
+            "EnduranceTitle",
+            new Vector2(0.05f, 0.62f),
+            new Vector2(0.42f, 0.93f),
+            25f,
+            TextAlignmentOptions.Right);
+        ElMandoobBootstrap.ApplyArabicText(enduranceTitle, "التحمل");
+
+        enduranceStatusText = CreateText(
+            enduranceCard.transform,
+            "EnduranceStatus",
+            new Vector2(0.05f, 0.15f),
+            new Vector2(0.54f, 0.61f),
+            18f,
+            TextAlignmentOptions.Right);
+
         enduranceButton = CreateUpgradeButton(
-            panel.transform,
+            enduranceCard.transform,
             "EnduranceUpgrade",
-            new Vector2(0.10f, 0.25f),
-            new Vector2(0.90f, 0.41f),
-            out enduranceButtonText);
+            new Vector2(0.60f, 0.18f),
+            new Vector2(0.94f, 0.82f),
+            out enduranceButtonText,
+            out enduranceButtonImage);
         enduranceButton.onClick.AddListener(BuyEnduranceUpgrade);
 
         messageText = CreateText(
-            panel.transform,
+            windowObject.transform,
             "UpgradeMessage",
-            new Vector2(0.10f, 0.16f),
-            new Vector2(0.90f, 0.24f),
+            new Vector2(0.10f, 0.125f),
+            new Vector2(0.90f, 0.19f),
             18f,
             TextAlignmentOptions.Center);
+        messageText.color = new Color(1f, 0.80f, 0.38f, 1f);
 
         Button closeButton = CreateUpgradeButton(
-            panel.transform,
+            windowObject.transform,
             "CloseUpgrade",
-            new Vector2(0.31f, 0.045f),
-            new Vector2(0.69f, 0.14f),
-            out TextMeshProUGUI closeText);
+            new Vector2(0.34f, 0.035f),
+            new Vector2(0.66f, 0.115f),
+            out TextMeshProUGUI closeText,
+            out Image closeImage);
+        closeImage.color = new Color(0.16f, 0.18f, 0.17f, 1f);
         closeButton.onClick.AddListener(CloseUpgradePanel);
         ElMandoobBootstrap.ApplyArabicText(closeText, "رجوع");
     }
@@ -172,22 +280,97 @@ public class ElMandoobMenuPanel : MonoBehaviour
             return;
         }
 
-        messageText.text = string.Empty;
         Refresh();
+        ClearMessage();
         upgradeModal.SetActive(true);
+
+        if (modalAnimation != null)
+        {
+            StopCoroutine(modalAnimation);
+        }
+        modalAnimation = StartCoroutine(AnimateModal(true));
     }
 
     private void CloseUpgradePanel()
     {
-        if (upgradeModal != null)
+        if (upgradeModal == null || !upgradeModal.activeSelf)
+        {
+            return;
+        }
+
+        if (modalAnimation != null)
+        {
+            StopCoroutine(modalAnimation);
+        }
+        modalAnimation = StartCoroutine(AnimateModal(false));
+    }
+
+    private IEnumerator AnimateModal(bool opening)
+    {
+        const float duration = 0.16f;
+        float elapsed = 0f;
+
+        float startAlpha = upgradeCanvasGroup != null ? upgradeCanvasGroup.alpha : (opening ? 0f : 1f);
+        float endAlpha = opening ? 1f : 0f;
+
+        Vector3 startScale = opening ? new Vector3(0.94f, 0.94f, 1f) : Vector3.one;
+        Vector3 endScale = opening ? Vector3.one : new Vector3(0.96f, 0.96f, 1f);
+
+        if (upgradeWindow != null && opening)
+        {
+            upgradeWindow.localScale = startScale;
+        }
+        if (upgradeCanvasGroup != null && opening)
+        {
+            upgradeCanvasGroup.alpha = 0f;
+        }
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float smooth = t * t * (3f - 2f * t);
+
+            if (upgradeCanvasGroup != null)
+            {
+                upgradeCanvasGroup.alpha = Mathf.Lerp(startAlpha, endAlpha, smooth);
+            }
+            if (upgradeWindow != null)
+            {
+                upgradeWindow.localScale = Vector3.Lerp(startScale, endScale, smooth);
+            }
+
+            yield return null;
+        }
+
+        if (upgradeCanvasGroup != null)
+        {
+            upgradeCanvasGroup.alpha = endAlpha;
+        }
+        if (upgradeWindow != null)
+        {
+            upgradeWindow.localScale = endScale;
+        }
+
+        if (!opening)
         {
             upgradeModal.SetActive(false);
+            if (upgradeCanvasGroup != null)
+            {
+                upgradeCanvasGroup.alpha = 1f;
+            }
+            if (upgradeWindow != null)
+            {
+                upgradeWindow.localScale = Vector3.one;
+            }
         }
+
+        modalAnimation = null;
     }
 
     private void BuySpeedUpgrade()
     {
-        data = SaveSystem.Load();
+        RefreshData();
         int cost = GetSpeedCost();
 
         if (data.speed >= 8)
@@ -198,7 +381,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         if (data.money < cost)
         {
-            ShowMessage("محتاج " + (cost - data.money) + " جنيه كمان للتطوير ده.");
+            ShowMessage("ناقصك " + (cost - data.money) + " جنيه للتطوير ده.");
             return;
         }
 
@@ -206,12 +389,12 @@ public class ElMandoobMenuPanel : MonoBehaviour
         data.speed++;
         SaveSystem.Save(data);
         Refresh();
-        ShowMessage("تم تطوير السرعة. هتحس بالفرق في الشارع.");
+        ShowMessage("تم تطوير السرعة. المندوب بقى أسرع.");
     }
 
     private void BuyEnduranceUpgrade()
     {
-        data = SaveSystem.Load();
+        RefreshData();
         int cost = GetEnduranceCost();
 
         if (data.healths >= 3)
@@ -222,7 +405,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         if (data.money < cost)
         {
-            ShowMessage("محتاج " + (cost - data.money) + " جنيه كمان للتطوير ده.");
+            ShowMessage("ناقصك " + (cost - data.money) + " جنيه للتطوير ده.");
             return;
         }
 
@@ -230,10 +413,10 @@ public class ElMandoobMenuPanel : MonoBehaviour
         data.healths++;
         SaveSystem.Save(data);
         Refresh();
-        ShowMessage("تم تطوير التحمل. بقيت مستعد للشيفتات الأصعب.");
+        ShowMessage("تم تطوير التحمل. هتستحمل خبطة زيادة.");
     }
 
-    private void Refresh()
+    private void RefreshData()
     {
         GameData latest = SaveSystem.Load();
         if (latest != null)
@@ -241,7 +424,17 @@ public class ElMandoobMenuPanel : MonoBehaviour
             data = latest;
         }
 
-        if (data == null || profileText == null)
+        if (data == null)
+        {
+            data = new GameData();
+        }
+    }
+
+    private void Refresh()
+    {
+        RefreshData();
+
+        if (profileText == null)
         {
             return;
         }
@@ -251,25 +444,72 @@ public class ElMandoobMenuPanel : MonoBehaviour
             "الرصيد: " + data.money + " جنيه     |     السمعة: " + data.reputation);
 
         int speedCost = GetSpeedCost();
-        string speedLabel = data.speed >= 8
-            ? "السرعة " + data.speed + "/8  -  آخر تطوير"
-            : "السرعة " + data.speed + "/8  ←  طوّر لـ " + (data.speed + 1) + "  |  " + speedCost + " جنيه";
-        ElMandoobBootstrap.ApplyArabicText(speedButtonText, speedLabel);
+        bool speedMax = data.speed >= 8;
+        bool canAffordSpeed = data.money >= speedCost;
+
+        ElMandoobBootstrap.ApplyArabicText(
+            speedStatusText,
+            speedMax
+                ? "المستوى الحالي: 8 / 8\nوصلت لأقصى سرعة"
+                : "المستوى الحالي: " + data.speed + " / 8\nالمستوى الجاي: " + (data.speed + 1) + " / 8");
+
+        ElMandoobBootstrap.ApplyArabicText(
+            speedButtonText,
+            speedMax ? "آخر تطوير" : "تطوير\n" + speedCost + " جنيه");
 
         int enduranceCost = GetEnduranceCost();
-        string enduranceLabel = data.healths >= 3
-            ? "التحمل " + data.healths + "/3  -  آخر تطوير"
-            : "التحمل " + data.healths + "/3  ←  طوّر لـ " + (data.healths + 1) + "  |  " + enduranceCost + " جنيه";
-        ElMandoobBootstrap.ApplyArabicText(enduranceButtonText, enduranceLabel);
+        bool enduranceMax = data.healths >= 3;
+        bool canAffordEndurance = data.money >= enduranceCost;
 
-        speedButton.interactable = data.speed < 8;
-        enduranceButton.interactable = data.healths < 3;
+        ElMandoobBootstrap.ApplyArabicText(
+            enduranceStatusText,
+            enduranceMax
+                ? "المستوى الحالي: 3 / 3\nوصلت لأقصى تحمل"
+                : "المستوى الحالي: " + data.healths + " / 3\nالمستوى الجاي: " + (data.healths + 1) + " / 3");
+
+        ElMandoobBootstrap.ApplyArabicText(
+            enduranceButtonText,
+            enduranceMax ? "آخر تطوير" : "تطوير\n" + enduranceCost + " جنيه");
+
+        // Maxed upgrades are disabled. Unaffordable upgrades remain clickable so the
+        // player gets a useful "ناقصك X جنيه" message instead of silent failure.
+        speedButton.interactable = !speedMax;
+        enduranceButton.interactable = !enduranceMax;
+
+        ApplyUpgradeButtonVisual(speedButtonImage, speedMax, canAffordSpeed);
+        ApplyUpgradeButtonVisual(enduranceButtonImage, enduranceMax, canAffordEndurance);
 
         ApplyShiftLocks();
     }
 
+    private void ApplyUpgradeButtonVisual(Image image, bool maxed, bool affordable)
+    {
+        if (image == null)
+        {
+            return;
+        }
+
+        if (maxed)
+        {
+            image.color = new Color(0.12f, 0.13f, 0.13f, 1f);
+        }
+        else if (affordable)
+        {
+            image.color = new Color(0.16f, 0.42f, 0.27f, 1f);
+        }
+        else
+        {
+            image.color = new Color(0.34f, 0.20f, 0.13f, 1f);
+        }
+    }
+
     private void ApplyShiftLocks()
     {
+        if (data == null)
+        {
+            return;
+        }
+
         LevelSelector[] selectors = Resources.FindObjectsOfTypeAll<LevelSelector>();
         foreach (LevelSelector selector in selectors)
         {
@@ -322,6 +562,21 @@ public class ElMandoobMenuPanel : MonoBehaviour
         {
             ElMandoobBootstrap.ApplyArabicText(messageText, message);
         }
+    }
+
+    private void ClearMessage()
+    {
+        if (messageText == null)
+        {
+            return;
+        }
+
+        UnityEngine.UI.Text overlay = messageText.GetComponentInChildren<UnityEngine.UI.Text>(true);
+        if (overlay != null)
+        {
+            overlay.text = string.Empty;
+        }
+        messageText.text = string.Empty;
     }
 
     private GameObject CreatePanel(
@@ -419,7 +674,8 @@ public class ElMandoobMenuPanel : MonoBehaviour
         string objectName,
         Vector2 anchorMin,
         Vector2 anchorMax,
-        out TextMeshProUGUI label)
+        out TextMeshProUGUI label,
+        out Image image)
     {
         GameObject buttonObject = new GameObject(objectName, typeof(RectTransform), typeof(Image), typeof(Button));
         buttonObject.transform.SetParent(parent, false);
@@ -430,22 +686,24 @@ public class ElMandoobMenuPanel : MonoBehaviour
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
 
-        Image image = buttonObject.GetComponent<Image>();
-        image.color = new Color(0.16f, 0.33f, 0.25f, 0.98f);
+        image = buttonObject.GetComponent<Image>();
+        image.color = new Color(0.16f, 0.42f, 0.27f, 1f);
 
         Button button = buttonObject.GetComponent<Button>();
         ColorBlock colors = button.colors;
-        colors.highlightedColor = new Color(0.23f, 0.46f, 0.34f, 1f);
-        colors.pressedColor = new Color(0.10f, 0.23f, 0.17f, 1f);
-        colors.disabledColor = new Color(0.11f, 0.12f, 0.12f, 0.70f);
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f, 1f);
+        colors.pressedColor = new Color(0.80f, 0.80f, 0.80f, 1f);
+        colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 0.80f);
+        colors.colorMultiplier = 1f;
         button.colors = colors;
 
         label = CreateText(
             buttonObject.transform,
             objectName + "Label",
-            new Vector2(0.04f, 0.08f),
-            new Vector2(0.96f, 0.92f),
-            22f,
+            new Vector2(0.05f, 0.08f),
+            new Vector2(0.95f, 0.92f),
+            21f,
             TextAlignmentOptions.Center);
 
         return button;
@@ -470,7 +728,7 @@ public class ElMandoobMenuPanel : MonoBehaviour
 
         TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
         text.fontSize = fontSize;
-        text.fontSizeMin = Mathf.Max(13f, fontSize - 7f);
+        text.fontSizeMin = Mathf.Max(12f, fontSize - 7f);
         text.fontSizeMax = fontSize;
         text.enableAutoSizing = true;
         text.enableWordWrapping = true;
